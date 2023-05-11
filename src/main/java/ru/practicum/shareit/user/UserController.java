@@ -15,6 +15,7 @@ import ru.practicum.shareit.user.service.UserService;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(path = "/users")
@@ -22,29 +23,32 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final UserMapper userMapper;
 
     @GetMapping
     public List<UserDto> getAll() {
         log.debug("GET request: all users");
-        return userService.getAllUsers();
+        return userService.getAllUsers().stream()
+                .map(userMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/{userId}")
     public UserDto getById(@PathVariable long userId) {
         log.debug("GET request: user with ID {}", userId);
-        return userService.getUserById(userId);
+        return userMapper.toDto(userService.getUserById(userId));
     }
 
     @PostMapping
     public UserDto add(@Valid @RequestBody UserDto userDto) {
         log.debug("POST request: new user");
-        return userService.addUser(userDto);
+        return userMapper.toDto(userService.addUser(userMapper.toUser(userDto)));
     }
 
     @PatchMapping("/{userId}")
     public UserDto update(@PathVariable long userId, @RequestBody UserDto userDto) {
         log.debug("PATCH request: updating user {}", userId);
-        return userService.updateUser(userId, userDto);
+        return userMapper.toDto(userService.updateUser(userId, userMapper.toUser(userDto)));
     }
 
     @DeleteMapping("/{userId}")

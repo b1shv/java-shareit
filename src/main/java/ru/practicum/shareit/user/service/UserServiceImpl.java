@@ -5,58 +5,52 @@ import org.springframework.stereotype.Service;
 import ru.practicum.shareit.exception.DuplicateException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.user.User;
-import ru.practicum.shareit.user.UserMapper;
 import ru.practicum.shareit.user.dao.UserDao;
-import ru.practicum.shareit.user.dto.UserDto;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserDao userDao;
-    private final UserMapper userMapper;
 
     @Override
-    public List<UserDto> getAllUsers() {
-        return userDao.getAllUsers().stream()
-                .map(userMapper::toUserDto)
-                .collect(Collectors.toList());
+    public List<User> getAllUsers() {
+        return userDao.getAllUsers();
     }
 
     @Override
-    public UserDto getUserById(long userId) {
-        return userMapper.toUserDto(userDao.getUserById(userId));
+    public User getUserById(long userId) {
+        return userDao.getUserById(userId);
     }
 
     @Override
-    public UserDto addUser(UserDto userDto) {
-        if (userDao.emailIsDuplicate(userDto.getEmail())) {
-            throw new DuplicateException(String.format("User with email '%s' already exists", userDto.getEmail()));
+    public User addUser(User user) {
+        if (userDao.emailIsDuplicate(user.getEmail())) {
+            throw new DuplicateException(String.format("User with email '%s' already exists", user.getEmail()));
         }
 
-        return userMapper.toUserDto(userDao.addUser(userMapper.toUser(userDto)));
+        return userDao.addUser(user);
     }
 
     @Override
-    public UserDto updateUser(long userId, UserDto userDto) {
+    public User updateUser(long userId, User user) {
         if (!userDao.userExists(userId)) {
             throw new NotFoundException(String.format("User with ID %d is not found", userId));
         }
 
-        User user = userDao.getUserById(userId);
-        if (userDto.getName() != null) {
-            user.setName(userDto.getName());
+        User userToUpdate = userDao.getUserById(userId);
+        if (user.getName() != null) {
+            userToUpdate.setName(user.getName());
         }
-        if (userDto.getEmail() != null && !userDto.getEmail().equals(user.getEmail())) {
-            if (userDao.emailIsDuplicate(userDto.getEmail())) {
-                throw new DuplicateException(String.format("User with email '%s' already exists", userDto.getEmail()));
+        if (user.getEmail() != null && !user.getEmail().equals(userToUpdate.getEmail())) {
+            if (userDao.emailIsDuplicate(user.getEmail())) {
+                throw new DuplicateException(String.format("User with email '%s' already exists", user.getEmail()));
             }
-            user.setEmail(userDto.getEmail());
+            userToUpdate.setEmail(user.getEmail());
         }
 
-        return userMapper.toUserDto(userDao.updateUser(userId, user));
+        return userDao.updateUser(userId, userToUpdate);
     }
 
     @Override

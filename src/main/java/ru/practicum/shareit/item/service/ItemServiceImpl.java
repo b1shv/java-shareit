@@ -3,82 +3,73 @@ package ru.practicum.shareit.item.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.exception.NotFoundException;
-import ru.practicum.shareit.item.ItemMapper;
 import ru.practicum.shareit.item.dao.ItemDao;
-import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.dao.UserDao;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
     private final ItemDao itemDao;
-    private final ItemMapper itemMapper;
     private final UserDao userDao;
 
     @Override
-    public List<ItemDto> getItemsByOwnerId(long ownerId) {
+    public List<Item> getItemsByOwnerId(long ownerId) {
         if (!userDao.userExists(ownerId)) {
             throw new NotFoundException(String.format("User with ID %d is not found", ownerId));
         }
 
-        return itemDao.getItemsByOwnerId(ownerId).stream()
-                .map(itemMapper::toItemDto)
-                .collect(Collectors.toList());
+        return itemDao.getItemsByOwnerId(ownerId);
     }
 
     @Override
-    public ItemDto getItemById(long itemId) {
-        return itemMapper.toItemDto(itemDao.getItemById(itemId));
+    public Item getItemById(long itemId) {
+        return itemDao.getItemById(itemId);
     }
 
     @Override
-    public List<ItemDto> searchText(String text) {
+    public List<Item> searchText(String text) {
         if (text.isBlank()) {
             return Collections.emptyList();
         }
 
-        return itemDao.searchText(text).stream()
-                .map(itemMapper::toItemDto)
-                .collect(Collectors.toList());
+        return itemDao.searchText(text);
     }
 
     @Override
-    public ItemDto addItem(ItemDto itemDto, long ownerId) {
-        if (!userDao.userExists(ownerId)) {
-            throw new NotFoundException(String.format("User with ID %d is not found", ownerId));
+    public Item addItem(Item item) {
+        if (!userDao.userExists(item.getOwnerId())) {
+            throw new NotFoundException(String.format("User with ID %d is not found", item.getOwnerId()));
         }
 
-        Item item = itemMapper.toItem(itemDto, ownerId);
-        return itemMapper.toItemDto(itemDao.addItem(item));
+        return itemDao.addItem(item);
     }
 
     @Override
-    public ItemDto updateItem(ItemDto itemDto, long itemId, long ownerId) {
-        if (!itemDao.itemExists(itemId)) {
-            throw new NotFoundException(String.format("Item with ID %d is not found", itemId));
+    public Item updateItem(Item item) {
+        if (!itemDao.itemExists(item.getId())) {
+            throw new NotFoundException(String.format("Item with ID %d is not found", item.getId()));
         }
-        if (!itemDao.userIsOwner(ownerId, itemId)) {
+        if (!itemDao.userIsOwner(item.getOwnerId(), item.getId())) {
             throw new NotFoundException(
-                    String.format("User with ID %d doesn't have an item with ID %d", ownerId, itemId));
+                    String.format("User with ID %d doesn't have an item with ID %d", item.getOwnerId(), item.getId()));
         }
 
-        Item item = itemDao.getItemById(itemId);
+        Item itemToUpdate = itemDao.getItemById(item.getId());
 
-        if (itemDto.getName() != null) {
-            item.setName(itemDto.getName());
+        if (item.getName() != null) {
+            itemToUpdate.setName(item.getName());
         }
-        if (itemDto.getDescription() != null) {
-            item.setDescription(itemDto.getDescription());
+        if (item.getDescription() != null) {
+            itemToUpdate.setDescription(item.getDescription());
         }
-        if (itemDto.getAvailable() != null) {
-            item.setAvailable(itemDto.getAvailable());
+        if (item.getAvailable() != null) {
+            itemToUpdate.setAvailable(item.getAvailable());
         }
 
-        return itemMapper.toItemDto(itemDao.updateItem(item));
+        return itemToUpdate;
     }
 }
