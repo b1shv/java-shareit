@@ -2,10 +2,16 @@ package ru.practicum.shareit.item.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ru.practicum.shareit.booking.BookingRepository;
+import ru.practicum.shareit.booking.BookingStatus;
+import ru.practicum.shareit.exception.ForbiddenException;
 import ru.practicum.shareit.exception.NotFoundException;
-import ru.practicum.shareit.item.dao.ItemDao;
+import ru.practicum.shareit.exception.ValidationException;
+import ru.practicum.shareit.item.CommentRepository;
+import ru.practicum.shareit.item.ItemRepository;
+import ru.practicum.shareit.item.model.Comment;
 import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.user.dao.UserDao;
+import ru.practicum.shareit.user.UserRepository;
 
 import java.util.Collections;
 import java.util.List;
@@ -13,21 +19,25 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
-    private final ItemDao itemDao;
-    private final UserDao userDao;
+    private final ItemRepository itemRepository;
+    private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     public List<Item> getItemsByOwnerId(long ownerId) {
-        if (!userDao.userExists(ownerId)) {
-            throw new NotFoundException(String.format("User with ID %d is not found", ownerId));
+        if (userRepository.findById(ownerId).isEmpty()) {
+            throw new NotFoundException(String.format("User ID %d is not found", ownerId));
         }
 
-        return itemDao.getItemsByOwnerId(ownerId);
+        return itemRepository.findAllByOwnerId(ownerId);
     }
 
     @Override
     public Item getItemById(long itemId) {
-        return itemDao.getItemById(itemId);
+        return itemRepository
+                .findById(itemId)
+                .orElseThrow(() -> new NotFoundException(String.format("Item ID %d is not found", itemId)));
     }
 
     @Override
@@ -36,29 +46,28 @@ public class ItemServiceImpl implements ItemService {
             return Collections.emptyList();
         }
 
-        return itemDao.searchText(text);
+        return itemRepository.searchText(text.toUpperCase());
     }
 
     @Override
     public Item addItem(Item item) {
-        if (!userDao.userExists(item.getOwnerId())) {
-            throw new NotFoundException(String.format("User with ID %d is not found", item.getOwnerId()));
+        if (userRepository.findById(item.getOwnerId()).isEmpty()) {
+            throw new NotFoundException(String.format("User ID %d is not found", item.getOwnerId()));
         }
 
-        return itemDao.addItem(item);
+        return itemRepository.save(item);
     }
 
     @Override
     public Item updateItem(Item item) {
-        if (!itemDao.itemExists(item.getId())) {
-            throw new NotFoundException(String.format("Item with ID %d is not found", item.getId()));
-        }
-        if (!itemDao.userIsOwner(item.getOwnerId(), item.getId())) {
-            throw new NotFoundException(
-                    String.format("User with ID %d doesn't have an item with ID %d", item.getOwnerId(), item.getId()));
-        }
+        Item itemToUpdate = itemRepository
+                .findById(item.getId())
+                .orElseThrow(() -> new NotFoundException(String.format("Item ID %d is not found", item.getId())));
 
-        Item itemToUpdate = itemDao.getItemById(item.getId());
+        if (item.getOwnerId() != itemToUpdate.getOwnerId()) {
+            throw new ForbiddenException(
+                    String.format("User ID %d is not an owner of an item ID %d", item.getOwnerId(), item.getId()));
+        }
 
         if (item.getName() != null) {
             itemToUpdate.setName(item.getName());
@@ -70,6 +79,22 @@ public class ItemServiceImpl implements ItemService {
             itemToUpdate.setAvailable(item.getAvailable());
         }
 
-        return itemToUpdate;
+        return itemRepository.save(itemToUpdate);
+    }
+
+    @Override
+    public Comment addComment(Comment comment) {
+        if (bookingRepository.findAllByItemIdAndBookerIdAndStatusAndEndBefore(comment.getItem().getId(),
+                comment.getAuthor().getId(), BookingStatus.APPROVED, comment.getCreated()).isEmpty()) {
+            throw new ValidationException(String.format("User ID %d has no past bookings of item ID %d",
+                    comment.getAuthor().getId(), comment.getItem().getId()));
+        }
+
+        return commentRepository.save(comment);
+    }
+
+    @Override
+    public List<Comment> getComments(long itemId) {
+        return commentRepository.findAllByItemIdOrderByCreatedDesc(itemId);
     }
 }
