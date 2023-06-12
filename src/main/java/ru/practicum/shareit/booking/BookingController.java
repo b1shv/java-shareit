@@ -14,12 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.service.BookingService;
 import ru.practicum.shareit.item.ItemMapper;
-import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.UserMapper;
-import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.service.UserService;
 
 import javax.validation.Valid;
@@ -43,11 +41,7 @@ public class BookingController {
     public BookingDto getById(@RequestHeader(USER_ID) long userId,
                               @PathVariable long bookingId) {
         log.debug("GET request: booking ID {}", bookingId);
-        Booking booking = bookingService.getBookingById(bookingId, userId);
-        ItemDto item = itemMapper.toDto(booking.getItem());
-        UserDto booker = userMapper.toDto(booking.getBooker());
-
-        return bookingMapper.toDto(booking, item, booker);
+        return bookingMapper.toDto(bookingService.getBookingById(bookingId, userId));
     }
 
     @GetMapping
@@ -55,9 +49,7 @@ public class BookingController {
                                           @RequestParam(name = "state", defaultValue = "ALL") String stateName) {
         log.debug("GET request: all booking of user ID {}, state {}", bookerId, stateName);
         return bookingService.getBookingsByBookerId(bookerId, stateName).stream()
-                .map(booking -> bookingMapper.toDto(booking,
-                        itemMapper.toDto(booking.getItem()),
-                        userMapper.toDto(booking.getBooker())))
+                .map(bookingMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -66,9 +58,7 @@ public class BookingController {
                                          @RequestParam(name = "state", defaultValue = "ALL") String stateName) {
         log.debug("GET request: all bookings of items of user ID {}, state {}", ownerId, stateName);
         return bookingService.getBookingsByOwnerId(ownerId, stateName).stream()
-                .map(booking -> bookingMapper.toDto(booking,
-                        itemMapper.toDto(booking.getItem()),
-                        userMapper.toDto(booking.getBooker())))
+                .map(bookingMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -80,8 +70,7 @@ public class BookingController {
         User booker = userService.getUserById(bookerId);
         Booking booking = bookingMapper.toBooking(bookingDto, item, booker);
 
-        return bookingMapper.toDto(bookingService.addBooking(booking),
-                itemMapper.toDto(item), userMapper.toDto(booker));
+        return bookingMapper.toDto(bookingService.addBooking(booking));
     }
 
     @PatchMapping("/{bookingId}")
@@ -89,9 +78,6 @@ public class BookingController {
                               @PathVariable long bookingId,
                               @RequestParam boolean approved) {
         log.debug("PATCH request: approving booking ID {}: {}", bookingId, approved);
-        Booking booking = bookingService.updateStatus(userId, bookingId, approved);
-
-        return bookingMapper.toDto(booking, itemMapper.toDto(booking.getItem()),
-                userMapper.toDto(booking.getBooker()));
+        return bookingMapper.toDto(bookingService.updateStatus(userId, bookingId, approved));
     }
 }

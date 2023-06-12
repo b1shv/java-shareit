@@ -22,9 +22,9 @@ public class BookingDto {
     @NotNull
     private LocalDateTime end;
 
-    private long bookerId;
+    private Long bookerId;
     private UserDto booker;
-    private long itemId;
+    private Long itemId;
     private ItemDto item;
     private BookingStatus status;
 }
