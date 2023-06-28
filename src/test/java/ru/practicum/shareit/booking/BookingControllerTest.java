@@ -81,8 +81,8 @@ class BookingControllerTest {
 
     @Test
     void getByBookerId_ShouldReturnBookings() throws Exception {
-        when(bookingService.getBookingsByBookerId(user.getId(), "CURRENT", 0, 10)).
-                thenReturn(List.of(booking1, booking2));
+        when(bookingService.getBookingsByBookerId(user.getId(), "CURRENT", 0, 10))
+                .thenReturn(List.of(booking1, booking2));
 
         mockMvc.perform(get("/bookings")
                         .param("state", "CURRENT")
@@ -126,8 +126,8 @@ class BookingControllerTest {
 
     @Test
     void getByOwnerId_shouldReturnBookings() throws Exception {
-        when(bookingService.getBookingsByOwnerId(user.getId(), "CURRENT", 0, 10)).
-                thenReturn(List.of(booking1, booking2));
+        when(bookingService.getBookingsByOwnerId(user.getId(), "CURRENT", 0, 10))
+                .thenReturn(List.of(booking1, booking2));
 
         mockMvc.perform(get("/bookings/owner")
                         .param("state", "CURRENT")
