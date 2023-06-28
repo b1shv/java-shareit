@@ -16,9 +16,9 @@ public class ErrorHandler {
         return new ErrorResponse(e.getMessage());
     }
 
-    @ExceptionHandler
+    @ExceptionHandler({ValidationException.class, javax.validation.ValidationException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleValidationException(final ValidationException e) {
+    public ErrorResponse handleValidationException(final RuntimeException e) {
         log.warn(e.getMessage(), e);
         return new ErrorResponse(e.getMessage());
     }

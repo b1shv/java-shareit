@@ -6,11 +6,11 @@ import ru.practicum.shareit.item.model.Item;
 import java.util.List;
 
 public interface ItemService {
-    List<Item> getItemsByOwnerId(long ownerId);
+    List<Item> getItemsByOwnerId(long ownerId, int from, int size);
 
     Item getItemById(long itemId);
 
-    List<Item> searchText(String text);
+    List<Item> searchText(String text, int from, int size);
 
     Item addItem(Item item);
 
@@ -19,4 +19,6 @@ public interface ItemService {
     Comment addComment(Comment comment);
 
     List<Comment> getComments(long itemId);
+
+    List<Item> getItemsByRequestId(long requestId);
 }

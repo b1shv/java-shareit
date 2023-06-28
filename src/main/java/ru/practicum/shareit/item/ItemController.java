@@ -2,6 +2,7 @@ package ru.practicum.shareit.item;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +22,8 @@ import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.service.UserService;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,6 +32,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/items")
 @Slf4j
 @RequiredArgsConstructor
+@Validated
 public class ItemController {
     private final ItemService itemService;
     private final ItemMapper itemMapper;
@@ -36,12 +40,16 @@ public class ItemController {
     private final BookingMapper bookingMapper;
     private final UserService userService;
     private final CommentMapper commentMapper;
+    private static final String DEFAULT_FROM = "0";
+    private static final String DEFAULT_SIZE = "10";
     private static final String USER_ID = "X-Sharer-User-Id";
 
     @GetMapping
-    public List<ItemDto> getAll(@RequestHeader(USER_ID) long ownerId) {
+    public List<ItemDto> getAll(@RequestHeader(USER_ID) long ownerId,
+                                @PositiveOrZero @RequestParam(defaultValue = DEFAULT_FROM) int from,
+                                @Positive @RequestParam(defaultValue = DEFAULT_SIZE) int size) {
         log.debug("GET request: all items of user {}", ownerId);
-        return itemService.getItemsByOwnerId(ownerId).stream()
+        return itemService.getItemsByOwnerId(ownerId, from, size).stream()
                 .map(item -> itemMapper.toDto(item,
                         bookingMapper.toDtoForItem(bookingService.getLastItemBooking(item.getId())),
                         bookingMapper.toDtoForItem(bookingService.getNextItemBooking(item.getId())),
@@ -67,9 +75,11 @@ public class ItemController {
     }
 
     @GetMapping("/search")
-    public List<ItemDto> search(@RequestParam String text) {
+    public List<ItemDto> search(@RequestParam String text,
+                                @PositiveOrZero @RequestParam(defaultValue = DEFAULT_FROM) int from,
+                                @Positive @RequestParam(defaultValue = DEFAULT_SIZE) int size) {
         log.debug("GET request: searching for text");
-        return itemService.searchText(text).stream()
+        return itemService.searchText(text, from, size).stream()
                 .map(itemMapper::toDto)
                 .collect(Collectors.toList());
     }
