@@ -6,7 +6,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import ru.practicum.shareit.booking.Booking;
 import ru.practicum.shareit.booking.BookingRepository;
@@ -22,7 +24,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -34,13 +37,13 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class BookingServiceImplTest {
     @Mock
-    BookingRepository bookingRepository;
+    private BookingRepository bookingRepository;
 
     @Mock
-    UserRepository userRepository;
+    private UserRepository userRepository;
 
     @InjectMocks
-    BookingServiceImpl bookingService;
+    private BookingServiceImpl bookingService;
 
     @Test
     void getBookingById_shouldReturnBooking() {
@@ -49,13 +52,13 @@ class BookingServiceImplTest {
         Booking booking = Booking.builder().booker(user).item(item).build();
         when(bookingRepository.findById(anyLong())).thenReturn(Optional.of(booking));
 
-        assertEquals(booking, bookingService.getBookingById(1, user.getId()));
-        assertEquals(booking, bookingService.getBookingById(1, item.getOwnerId()));
+        assertThat(bookingService.getBookingById(1, user.getId())).isEqualTo(booking);
+        assertThat(bookingService.getBookingById(1, item.getOwnerId())).isEqualTo(booking);
     }
 
     @Test
     void getBookingById_shouldThrowException_ifBookingNotFound() {
-        when(bookingRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(bookingRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> bookingService.getBookingById(1, 1));
     }
@@ -66,9 +69,10 @@ class BookingServiceImplTest {
         User user = User.builder().id(1).build();
         Item item = Item.builder().ownerId(2).build();
         Booking booking = Booking.builder().booker(user).item(item).build();
-        when(bookingRepository.findById(anyLong())).thenReturn(Optional.of(booking));
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
 
-        assertThrows(ForbiddenException.class, () -> bookingService.getBookingById(1, randomUserId));
+        assertThatThrownBy(() -> bookingService.getBookingById(1, randomUserId))
+                .isInstanceOf(ForbiddenException.class);
     }
 
     @Test
@@ -98,8 +102,8 @@ class BookingServiceImplTest {
                 .end(LocalDateTime.now().plusDays(1))
                 .build();
 
-        assertThrows(ForbiddenException.class, () -> bookingService.addBooking(booking));
-        verify(bookingRepository, never()).save(any(Booking.class));
+        assertThatThrownBy(() -> bookingService.addBooking(booking)).isInstanceOf(ForbiddenException.class);
+        verify(bookingRepository, never()).save(booking);
     }
 
     @Test
@@ -113,8 +117,8 @@ class BookingServiceImplTest {
                 .end(LocalDateTime.now().plusDays(1))
                 .build();
 
-        assertThrows(ValidationException.class, () -> bookingService.addBooking(booking));
-        verify(bookingRepository, never()).save(any(Booking.class));
+        assertThatThrownBy(() -> bookingService.addBooking(booking)).isInstanceOf(ValidationException.class);
+        verify(bookingRepository, never()).save(booking);
     }
 
     @Test
@@ -128,8 +132,8 @@ class BookingServiceImplTest {
                 .end(LocalDateTime.now().minusDays(1))
                 .build();
 
-        assertThrows(ValidationException.class, () -> bookingService.addBooking(booking));
-        verify(bookingRepository, never()).save(any(Booking.class));
+        assertThatThrownBy(() -> bookingService.addBooking(booking)).isInstanceOf(ValidationException.class);
+        verify(bookingRepository, never()).save(booking);
     }
 
     @Test
@@ -155,8 +159,8 @@ class BookingServiceImplTest {
         bookingService.updateStatus(user.getId(), bookingToApprove.getId(), true);
         bookingService.updateStatus(user.getId(), bookingToReject.getId(), false);
 
-        assertEquals(BookingStatus.APPROVED, bookingToApprove.getStatus());
-        assertEquals(BookingStatus.REJECTED, bookingToReject.getStatus());
+        assertThat(bookingToApprove.getStatus()).isEqualTo(BookingStatus.APPROVED);
+        assertThat(bookingToReject.getStatus()).isEqualTo(BookingStatus.REJECTED);
     }
 
     @Test
@@ -168,16 +172,18 @@ class BookingServiceImplTest {
                 .item(item)
                 .status(BookingStatus.APPROVED)
                 .build();
-        when(bookingRepository.findById(anyLong())).thenReturn(Optional.of(booking));
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
 
-        assertThrows(ValidationException.class, () -> bookingService.updateStatus(1, 1, false));
+        assertThatThrownBy(() -> bookingService.updateStatus(1, 1, false))
+                .isInstanceOf(ValidationException.class);
     }
 
     @Test
     void updateStatus_shouldThrowException_ifBookingNotFound() {
-        when(bookingRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(bookingRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> bookingService.updateStatus(1, 1, false));
+        assertThatThrownBy(() -> bookingService.updateStatus(1, 1, false))
+                .isInstanceOf(NotFoundException.class);
     }
 
     @Test
@@ -189,46 +195,54 @@ class BookingServiceImplTest {
                 .item(item)
                 .status(BookingStatus.WAITING)
                 .build();
-        when(bookingRepository.findById(anyLong())).thenReturn(Optional.of(booking));
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
 
-        assertThrows(ForbiddenException.class, () -> bookingService.updateStatus(1, 1, false));
+        assertThatThrownBy(() -> bookingService.updateStatus(1, 1, false))
+                .isInstanceOf(ForbiddenException.class);
+        ;
     }
 
     @Test
     void getBookingsByBookerId_shouldCallBookingRepository() {
-        when(userRepository.existsById(anyLong())).thenReturn(true);
+        when(userRepository.existsById(1L)).thenReturn(true);
         when(bookingRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Collections.emptyList()));
 
-        bookingService.getBookingsByBookerId(1, "CURRENT", 0, 5);
+        bookingService.getBookingsByBookerId(1, "CURRENT",
+                PageRequest.of(0, 10, Sort.by("start").descending()));
 
         verify(bookingRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     void getBookingsByBookerId_shouldThrowException_ifUserNotFound() {
-        when(userRepository.existsById(anyLong())).thenThrow(new NotFoundException());
+        when(userRepository.existsById(1L)).thenThrow(new NotFoundException());
 
-        assertThrows(NotFoundException.class, () -> bookingService.getBookingsByBookerId(1, "CURRENT", 0, 5));
+        assertThatThrownBy(() -> bookingService.getBookingsByBookerId(
+                1, "CURRENT", PageRequest.of(0, 5, Sort.by("start").descending())))
+                .isInstanceOf(NotFoundException.class);
         verify(bookingRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     void getBookingsByBookerId_shouldThrowException_ifUnknownState() {
         String unknownStateName = "UNKNOWN";
-        when(userRepository.existsById(anyLong())).thenReturn(true);
+        when(userRepository.existsById(1L)).thenReturn(true);
 
-        assertThrows(ValidationException.class, () -> bookingService.getBookingsByBookerId(1, unknownStateName, 0, 5));
+        assertThatThrownBy(() -> bookingService.getBookingsByBookerId(
+                1, unknownStateName, PageRequest.of(0, 10, Sort.by("start").descending())))
+                .isInstanceOf(ValidationException.class);
         verify(bookingRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     void getBookingsByOwnerId_ShouldCallRepository() {
-        when(userRepository.existsById(anyLong())).thenReturn(true);
+        when(userRepository.existsById(1L)).thenReturn(true);
         when(bookingRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Collections.emptyList()));
 
-        bookingService.getBookingsByOwnerId(1, "CURRENT", 0, 5);
+        bookingService.getBookingsByOwnerId(1, "CURRENT",
+                PageRequest.of(0, 5, Sort.by("start").descending()));
 
         verify(bookingRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     }

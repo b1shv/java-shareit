@@ -15,8 +15,8 @@ import ru.practicum.shareit.user.UserRepository;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -26,13 +26,13 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ItemRequestServiceImplTest {
     @Mock
-    UserRepository userRepository;
+    private UserRepository userRepository;
 
     @Mock
-    ItemRequestRepository itemRequestRepository;
+    private ItemRequestRepository itemRequestRepository;
 
     @InjectMocks
-    ItemRequestServiceImpl itemRequestService;
+    private ItemRequestServiceImpl itemRequestService;
 
     @Test
     void getAllRequests_shouldReturnRequests() {
@@ -46,12 +46,13 @@ class ItemRequestServiceImplTest {
         when(itemRequestRepository.findAllByRequesterIdNot(
                 userId, PageRequest.of(page, size, Sort.by("created").descending()))).thenReturn(requests);
 
-        assertEquals(requests, itemRequestService.getAllRequests(userId, from, size));
+        assertThat(itemRequestService.getAllRequests(userId, PageRequest.of(page, size, Sort.by("created").descending())))
+                .isEqualTo(requests);
     }
 
     @Test
     void getAllByRequesterId_shouldCallRepository() {
-        when(userRepository.existsById(anyLong())).thenReturn(true);
+        when(userRepository.existsById(1L)).thenReturn(true);
         itemRequestService.getAllByRequesterId(1);
 
         verify(itemRequestRepository, times(1)).findAllByRequesterIdOrderByCreatedDesc(1);
@@ -59,40 +60,40 @@ class ItemRequestServiceImplTest {
 
     @Test
     void getAllByRequesterId_shouldThrowException_ifRequesterNotFound() {
-        when(userRepository.existsById(anyLong())).thenReturn(false);
+        when(userRepository.existsById(1L)).thenReturn(false);
 
-        assertThrows(NotFoundException.class, () -> itemRequestService.getAllByRequesterId(1));
+        assertThatThrownBy(() -> itemRequestService.getAllByRequesterId(1)).isInstanceOf(NotFoundException.class);
         verify(itemRequestRepository, never()).findAllByRequesterIdOrderByCreatedDesc(anyLong());
     }
 
     @Test
     void getRequestById_shouldReturnRequest() {
         ItemRequest request = ItemRequest.builder().id(1).build();
-        when(userRepository.existsById(anyLong())).thenReturn(true);
-        when(itemRequestRepository.findById(anyLong())).thenReturn(Optional.of(request));
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(itemRequestRepository.findById(1L)).thenReturn(Optional.of(request));
 
-        assertEquals(request, itemRequestService.getRequestById(1, 1));
+        assertThat(itemRequestService.getRequestById(1, 1)).isEqualTo(request);
     }
 
     @Test
     void getRequestById_shouldThrowException_ifUserNotFound() {
-        when(userRepository.existsById(anyLong())).thenReturn(false);
+        when(userRepository.existsById(1L)).thenReturn(false);
 
-        assertThrows(NotFoundException.class, () -> itemRequestService.getRequestById(1, 1));
+        assertThatThrownBy(() -> itemRequestService.getRequestById(1, 1)).isInstanceOf(NotFoundException.class);
     }
 
     @Test
     void getRequestById_shouldThrowException_ifRequestNotFound() {
-        when(userRepository.existsById(anyLong())).thenReturn(true);
-        when(itemRequestRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(itemRequestRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> itemRequestService.getRequestById(1, 1));
+        assertThatThrownBy(() -> itemRequestService.getRequestById(1, 1)).isInstanceOf(NotFoundException.class);
     }
 
     @Test
     void addRequest_shouldSendRequestToRepository() {
         ItemRequest request = ItemRequest.builder().id(1).build();
-        when(userRepository.existsById(anyLong())).thenReturn(true);
+        when(userRepository.existsById(request.getRequesterId())).thenReturn(true);
 
         itemRequestService.addRequest(request);
 
@@ -102,9 +103,9 @@ class ItemRequestServiceImplTest {
     @Test
     void addRequest_shouldThrowException_ifRequesterNotFound() {
         ItemRequest request = ItemRequest.builder().id(1).build();
-        when(userRepository.existsById(anyLong())).thenReturn(false);
+        when(userRepository.existsById(request.getRequesterId())).thenReturn(false);
 
-        assertThrows(NotFoundException.class, () -> itemRequestService.addRequest(request));
+        assertThatThrownBy(() -> itemRequestService.addRequest(request)).isInstanceOf(NotFoundException.class);
         verify(itemRequestRepository, never()).save(request);
     }
 }

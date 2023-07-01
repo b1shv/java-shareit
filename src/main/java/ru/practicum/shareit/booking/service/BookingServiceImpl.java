@@ -1,9 +1,7 @@
 package ru.practicum.shareit.booking.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.booking.Booking;
@@ -69,7 +67,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public List<Booking> getBookingsByBookerId(long bookerId, String stateName, int from, int size) {
+    public List<Booking> getBookingsByBookerId(long bookerId, String stateName, Pageable pageable) {
         if (!userRepository.existsById(bookerId)) {
             throw new NotFoundException(String.format("User ID %d is not found", bookerId));
         }
@@ -78,14 +76,14 @@ public class BookingServiceImpl implements BookingService {
             BookingState state = BookingState.valueOf(stateName);
             Specification<Booking> byBookerId = (r, q, cb) -> cb.equal(r.<Long>get("booker").get("id"), bookerId);
             return bookingRepository.findAll(Specification.where(byBookerId).and(state.getSpecification()),
-                    countPageAndSort(from, size)).getContent();
+                    pageable).getContent();
         } catch (IllegalArgumentException e) {
             throw new ValidationException(String.format("Unknown state: %s", stateName));
         }
     }
 
     @Override
-    public List<Booking> getBookingsByOwnerId(long ownerId, String stateName, int from, int size) {
+    public List<Booking> getBookingsByOwnerId(long ownerId, String stateName, Pageable pageable) {
         if (!userRepository.existsById(ownerId)) {
             throw new NotFoundException(String.format("User ID %d is not found", ownerId));
         }
@@ -94,7 +92,7 @@ public class BookingServiceImpl implements BookingService {
             BookingState state = BookingState.valueOf(stateName);
             Specification<Booking> byOwnerId = (r, q, cb) -> cb.equal(r.<Long>get("item").get("ownerId"), ownerId);
             return bookingRepository.findAll(Specification.where(byOwnerId).and(state.getSpecification()),
-                    countPageAndSort(from, size)).getContent();
+                    pageable).getContent();
         } catch (IllegalArgumentException e) {
             throw new ValidationException(String.format("Unknown state: %s", stateName));
         }
@@ -108,10 +106,5 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public Booking getNextItemBooking(long itemId) {
         return bookingRepository.findNextItemBooking(itemId);
-    }
-
-    private Pageable countPageAndSort(int from, int size) {
-        int page = from / size;
-        return PageRequest.of(page, size, Sort.by("start").descending());
     }
 }

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.annotation.DirtiesContext;
 import ru.practicum.shareit.item.model.Comment;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.User;
@@ -12,18 +13,14 @@ import ru.practicum.shareit.user.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
+@DirtiesContext
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
-class CommentRepositoryTest {
-    @Autowired
+class CommentRepositoryIntegrationTest {
     private final CommentRepository commentRepository;
-
-    @Autowired
     private final ItemRepository itemRepository;
-
-    @Autowired
     private final UserRepository userRepository;
 
     @Test
@@ -50,8 +47,8 @@ class CommentRepositoryTest {
         List<Comment> item1expected = List.of(comment1, comment5, comment3);
         List<Comment> item2expected = List.of(comment4, comment6, comment2);
 
-        assertEquals(item1expected, commentRepository.findAllByItemIdOrderByCreatedDesc(item1.getId()));
-        assertEquals(item2expected, commentRepository.findAllByItemIdOrderByCreatedDesc(item2.getId()));
+        assertThat(commentRepository.findAllByItemIdOrderByCreatedDesc(item1.getId())).isEqualTo(item1expected);
+        assertThat(commentRepository.findAllByItemIdOrderByCreatedDesc(item2.getId())).isEqualTo(item2expected);
     }
 
 }

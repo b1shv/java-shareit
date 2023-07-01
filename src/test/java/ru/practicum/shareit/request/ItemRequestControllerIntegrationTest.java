@@ -6,6 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.shareit.exception.NotFoundException;
@@ -18,7 +21,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -30,28 +32,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = ItemRequestController.class)
 @Import({ItemRequestMapper.class, ItemMapper.class})
-class ItemRequestControllerTest {
-    @MockBean
-    ItemRequestService itemRequestService;
-
-    @MockBean
-    ItemService itemService;
-
-    @Autowired
-    MockMvc mockMvc;
-
-    @Autowired
-    ObjectMapper objectMapper;
-
+class ItemRequestControllerIntegrationTest {
     private static final String USER_ID = "X-Sharer-User-Id";
+
+    @MockBean
+    private ItemRequestService itemRequestService;
+
+    @MockBean
+    private ItemService itemService;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     void getAllShouldReturnRequests() throws Exception {
         long userId = 11;
         ItemRequest itemRequest1 = ItemRequest.builder().id(1).build();
         ItemRequest itemRequest2 = ItemRequest.builder().id(2).build();
-        when(itemService.getItemsByRequestId(anyLong())).thenReturn(Collections.emptyList());
-        when(itemRequestService.getAllRequests(userId, 0, 10)).thenReturn(List.of(itemRequest1, itemRequest2));
+        when(itemService.getItemsByRequestId(userId)).thenReturn(Collections.emptyList());
+        when(itemRequestService.getAllRequests(userId, PageRequest.of(0, 10, Sort.by("created").descending())))
+                .thenReturn(List.of(itemRequest1, itemRequest2));
 
         mockMvc.perform(get("/requests/all")
                         .header(USER_ID, userId))
@@ -76,7 +79,7 @@ class ItemRequestControllerTest {
                         .param("size", wrongSize))
                 .andExpect(status().isBadRequest());
 
-        verify(itemRequestService, never()).getAllRequests(anyLong(), anyInt(), anyInt());
+        verify(itemRequestService, never()).getAllRequests(anyLong(), any(Pageable.class));
     }
 
     @Test
@@ -97,7 +100,7 @@ class ItemRequestControllerTest {
 
     @Test
     void getAllByRequester_shouldReturnNotFound_ifRequesterNotFound() throws Exception {
-        when(itemRequestService.getAllByRequesterId(anyLong())).thenThrow(new NotFoundException());
+        when(itemRequestService.getAllByRequesterId(1)).thenThrow(new NotFoundException());
 
         mockMvc.perform(get("/requests")
                         .header(USER_ID, 1))
@@ -119,7 +122,7 @@ class ItemRequestControllerTest {
 
     @Test
     void getById_shouldReturnNotFound_ifUserOrRequestNotFound() throws Exception {
-        when(itemRequestService.getRequestById(anyLong(), anyLong())).thenThrow(new NotFoundException());
+        when(itemRequestService.getRequestById(1L, 1L)).thenThrow(new NotFoundException());
 
         mockMvc.perform(get("/requests/{id}", 1)
                         .header(USER_ID, 1))

@@ -3,30 +3,44 @@ package ru.practicum.shareit.user;
 import org.junit.jupiter.api.Test;
 import ru.practicum.shareit.user.dto.UserDto;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class UserMapperTest {
     private final UserMapper userMapper = new UserMapper();
-    private final User user = User.builder()
-            .id(1)
-            .name("Ttt")
-            .email("ttt@ttt.tt")
-            .build();
-    private final UserDto userDto = UserDto.builder()
-            .id(1)
-            .name("Ttt")
-            .email("ttt@ttt.tt")
-            .build();
 
     @Test
     void toDto_returnsDto() {
+        User user = User.builder()
+                .id(1)
+                .name("Ttt")
+                .email("ttt@ttt.tt")
+                .build();
+        UserDto userDto = UserDto.builder()
+                .id(1)
+                .name("Ttt")
+                .email("ttt@ttt.tt")
+                .build();
+
         UserDto dtoFromMapper = userMapper.toDto(user);
-        assertEquals(userDto, dtoFromMapper);
+
+        assertThat(dtoFromMapper).isEqualTo(userDto);
     }
 
     @Test
     void toUser_ReturnsUser() {
+        User user = User.builder()
+                .id(1)
+                .name("Ttt")
+                .email("ttt@ttt.tt")
+                .build();
+        UserDto userDto = UserDto.builder()
+                .id(1)
+                .name("Ttt")
+                .email("ttt@ttt.tt")
+                .build();
+
         User userFromMapper = userMapper.toUser(userDto);
-        assertEquals(user, userFromMapper);
+
+        assertThat(userFromMapper).isEqualTo(user);
     }
 }

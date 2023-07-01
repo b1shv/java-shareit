@@ -22,18 +22,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = UserController.class)
-class UserControllerTest {
+class UserControllerIntegrationTest {
     @MockBean
-    UserService userService;
+    private UserService userService;
 
     @MockBean
-    UserMapper userMapper;
+    private UserMapper userMapper;
 
     @Autowired
-    MockMvc mockMvc;
+    private MockMvc mockMvc;
 
     @Autowired
-    ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
 
     @Test
     void getAll_shouldReturnOk() throws Exception {
@@ -64,9 +64,9 @@ class UserControllerTest {
         UserDto userDto = UserDto.builder().id(1).name("Ggg").email("ggg@ggg.gg").build();
         User user = User.builder().id(1).name("Ggg").email("ggg@ggg.gg").build();
 
-        when(userService.addUser(any(User.class))).thenReturn(user);
-        when(userMapper.toUser(any(UserDto.class))).thenReturn(user);
-        when(userMapper.toDto(any(User.class))).thenReturn(userDto);
+        when(userService.addUser(user)).thenReturn(user);
+        when(userMapper.toUser(userDto)).thenReturn(user);
+        when(userMapper.toDto(user)).thenReturn(userDto);
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)

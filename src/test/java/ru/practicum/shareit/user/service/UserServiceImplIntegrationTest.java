@@ -5,29 +5,29 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.user.User;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
+@Transactional
+@DirtiesContext
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 class UserServiceImplIntegrationTest {
-    @Autowired
     private final UserServiceImpl userService;
 
     @Test
-    @DirtiesContext
     void addUser_shouldThrowException_ifEmailDuplicate() {
         User user = User.builder().name("Ttt").email("ttt@ttt.tt").build();
         User userDuplicateEmail = User.builder().name("Rrr").email("ttt@ttt.tt").build();
         userService.addUser(user);
 
-        assertThrows(RuntimeException.class, () -> userService.addUser(userDuplicateEmail));
+        assertThatThrownBy(() -> userService.addUser(userDuplicateEmail)).isInstanceOf(RuntimeException.class);
     }
 
     @Test
-    @DirtiesContext
     void updateUser_shouldChangeEntityFields() {
         User user = userService.addUser(User.builder().name("Ttt").email("ttt@ttt.tt").build());
         User justName = User.builder().name("Fff").build();
@@ -37,16 +37,15 @@ class UserServiceImplIntegrationTest {
 
         userService.updateUser(user.getId(), justName);
         User userUpdatedName = userService.getUserById(user.getId());
+        assertThat(userUpdatedName.getName()).isEqualTo(justName.getName());
 
         userService.updateUser(user.getId(), justEmail);
         User userUpdatedEmail = userService.getUserById(user.getId());
+        assertThat(userUpdatedEmail.getEmail()).isEqualTo(justEmail.getEmail());
 
         userService.updateUser(user.getId(), nameAndEmail);
         User userUpdatedNameAndEmail = userService.getUserById(user.getId());
-
-        assertEquals(justName.getName(), userUpdatedName.getName());
-        assertEquals(justEmail.getEmail(), userUpdatedEmail.getEmail());
-        assertEquals(nameAndEmail.getName(), userUpdatedNameAndEmail.getName());
-        assertEquals(nameAndEmail.getEmail(), userUpdatedNameAndEmail.getEmail());
+        assertThat(userUpdatedNameAndEmail.getName()).isEqualTo(nameAndEmail.getName());
+        assertThat(userUpdatedNameAndEmail.getEmail()).isEqualTo(nameAndEmail.getEmail());
     }
 }

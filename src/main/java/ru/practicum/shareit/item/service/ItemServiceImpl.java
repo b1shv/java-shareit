@@ -1,7 +1,6 @@
 package ru.practicum.shareit.item.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.booking.BookingRepository;
@@ -29,12 +28,12 @@ public class ItemServiceImpl implements ItemService {
     private final ItemRequestRepository itemRequestRepository;
 
     @Override
-    public List<Item> getItemsByOwnerId(long ownerId, int from, int size) {
+    public List<Item> getItemsByOwnerId(long ownerId, Pageable pageable) {
         if (!userRepository.existsById(ownerId)) {
             throw new NotFoundException(String.format("User ID %d is not found", ownerId));
         }
 
-        return itemRepository.findAllByOwnerId(ownerId, countPage(from, size));
+        return itemRepository.findAllByOwnerId(ownerId, pageable);
     }
 
     @Override
@@ -44,12 +43,12 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public List<Item> searchText(String text, int from, int size) {
+    public List<Item> searchText(String text, Pageable pageable) {
         if (text.isBlank()) {
             return Collections.emptyList();
         }
 
-        return itemRepository.searchText(text, countPage(from, size));
+        return itemRepository.searchText(text, pageable);
     }
 
     @Override
@@ -110,10 +109,5 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public List<Item> getItemsByRequestId(long requestId) {
         return itemRepository.findAllByRequestId(requestId);
-    }
-
-    private Pageable countPage(int from, int size) {
-        int page = from / size;
-        return PageRequest.of(page, size);
     }
 }

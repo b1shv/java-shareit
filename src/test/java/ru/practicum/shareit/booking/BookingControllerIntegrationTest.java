@@ -6,6 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.shareit.booking.dto.BookingDto;
@@ -23,9 +26,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -38,31 +39,31 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = BookingController.class)
 @Import({BookingMapper.class, ItemMapper.class, UserMapper.class})
-class BookingControllerTest {
+class BookingControllerIntegrationTest {
+    private static final Pageable DEFAULT_PAGEABLE = PageRequest.of(0, 10, Sort.by("start").descending());
     @MockBean
-    BookingService bookingService;
+    private BookingService bookingService;
 
     @MockBean
-    UserService userService;
+    private UserService userService;
 
     @MockBean
-    ItemService itemService;
+    private ItemService itemService;
 
     @Autowired
-    MockMvc mockMvc;
+    private MockMvc mockMvc;
 
     @Autowired
-    ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
 
-    private final User user = User.builder().id(11).build();
-    private final Item item = Item.builder().id(22).build();
-    private final Booking booking1 = Booking.builder().id(33L).booker(user).item(item).build();
-    private final Booking booking2 = Booking.builder().id(44L).booker(user).item(item).build();
     private static final String USER_ID = "X-Sharer-User-Id";
 
     @Test
     void getById_shouldReturnBooking() throws Exception {
-        when(bookingService.getBookingById(anyLong(), anyLong())).thenReturn(booking1);
+        User user = User.builder().id(11).build();
+        Item item = Item.builder().id(22).build();
+        Booking booking1 = Booking.builder().id(33L).booker(user).item(item).build();
+        when(bookingService.getBookingById(booking1.getId(), user.getId())).thenReturn(booking1);
 
         mockMvc.perform(get("/bookings/{bookingId}", booking1.getId())
                         .header(USER_ID, user.getId()))
@@ -72,7 +73,10 @@ class BookingControllerTest {
 
     @Test
     void getById_shouldReturnNotFound_ifBookingNotFound() throws Exception {
-        when(bookingService.getBookingById(anyLong(), anyLong())).thenThrow(new NotFoundException());
+        User user = User.builder().id(11).build();
+        Item item = Item.builder().id(22).build();
+        Booking booking1 = Booking.builder().id(33L).booker(user).item(item).build();
+        when(bookingService.getBookingById(booking1.getId(), user.getId())).thenThrow(new NotFoundException());
 
         mockMvc.perform(get("/bookings/{bookingId}", booking1.getId())
                         .header(USER_ID, user.getId()))
@@ -81,7 +85,12 @@ class BookingControllerTest {
 
     @Test
     void getByBookerId_ShouldReturnBookings() throws Exception {
-        when(bookingService.getBookingsByBookerId(user.getId(), "CURRENT", 0, 10))
+        User user = User.builder().id(11).build();
+        Item item = Item.builder().id(22).build();
+        Booking booking1 = Booking.builder().id(33L).booker(user).item(item).build();
+        Booking booking2 = Booking.builder().id(44L).booker(user).item(item).build();
+        when(bookingService.getBookingsByBookerId(user.getId(), "CURRENT",
+                DEFAULT_PAGEABLE))
                 .thenReturn(List.of(booking1, booking2));
 
         mockMvc.perform(get("/bookings")
@@ -101,32 +110,37 @@ class BookingControllerTest {
         mockMvc.perform(get("/bookings")
                         .param("state", "CURRENT")
                         .param("from", wrongFrom)
-                        .header(USER_ID, user.getId()))
+                        .header(USER_ID, 1))
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/bookings")
                         .param("state", "CURRENT")
                         .param("size", wrongSize)
-                        .header(USER_ID, user.getId()))
+                        .header(USER_ID, 1))
                 .andExpect(status().isBadRequest());
 
-        verify(bookingService, never()).getBookingsByBookerId(anyLong(), anyString(), anyInt(), anyInt());
+        verify(bookingService, never()).getBookingsByBookerId(
+                1, "CURRENT", DEFAULT_PAGEABLE);
     }
 
     @Test
     void getByBookerId_ShouldReturnNotFound_ifBookerNotFound() throws Exception {
-        when(bookingService.getBookingsByBookerId(anyLong(), anyString(), anyInt(), anyInt()))
+        when(bookingService.getBookingsByBookerId(1, "CURRENT", DEFAULT_PAGEABLE))
                 .thenThrow(new NotFoundException());
 
         mockMvc.perform(get("/bookings")
                         .param("state", "CURRENT")
-                        .header(USER_ID, user.getId()))
+                        .header(USER_ID, 1))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void getByOwnerId_shouldReturnBookings() throws Exception {
-        when(bookingService.getBookingsByOwnerId(user.getId(), "CURRENT", 0, 10))
+        User user = User.builder().id(11).build();
+        Item item = Item.builder().id(22).build();
+        Booking booking1 = Booking.builder().id(33L).booker(user).item(item).build();
+        Booking booking2 = Booking.builder().id(44L).booker(user).item(item).build();
+        when(bookingService.getBookingsByOwnerId(user.getId(), "CURRENT", DEFAULT_PAGEABLE))
                 .thenReturn(List.of(booking1, booking2));
 
         mockMvc.perform(get("/bookings/owner")
@@ -146,32 +160,34 @@ class BookingControllerTest {
         mockMvc.perform(get("/bookings/owner")
                         .param("state", "CURRENT")
                         .param("from", wrongFrom)
-                        .header(USER_ID, user.getId()))
+                        .header(USER_ID, 1))
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/bookings/owner")
                         .param("state", "CURRENT")
                         .param("size", wrongSize)
-                        .header(USER_ID, user.getId()))
+                        .header(USER_ID, 1))
                 .andExpect(status().isBadRequest());
 
-        verify(bookingService, never()).getBookingsByOwnerId(anyLong(), anyString(), anyInt(), anyInt());
+        verify(bookingService, never()).getBookingsByOwnerId(1L, "CURRENT", DEFAULT_PAGEABLE);
     }
 
     @Test
     void getByOwnerId_ShouldReturnNotFound_ifOwnerNotFound() throws Exception {
-        when(bookingService.getBookingsByOwnerId(anyLong(), anyString(), anyInt(), anyInt()))
+        when(bookingService.getBookingsByOwnerId(1, "CURRENT", DEFAULT_PAGEABLE))
                 .thenThrow(new NotFoundException());
 
         mockMvc.perform(get("/bookings/owner")
                         .param("state", "CURRENT")
-                        .header(USER_ID, user.getId()))
+                        .header(USER_ID, 1))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void add_shouldSendBookingToRepository() throws Exception {
         long randomBookingId = 100;
+        User user = User.builder().id(11).build();
+        Item item = Item.builder().id(22).build();
         BookingDto bookingDto = BookingDto.builder()
                 .start(LocalDateTime.now().plusDays(5))
                 .end(LocalDateTime.now().plusDays(6))
@@ -198,13 +214,15 @@ class BookingControllerTest {
 
     @Test
     void add_shouldReturnNotFound_ifBookerNotFound() throws Exception {
+        User user = User.builder().id(11).build();
+        Item item = Item.builder().id(22).build();
         BookingDto bookingDto = BookingDto.builder()
                 .start(LocalDateTime.now().plusDays(5))
                 .end(LocalDateTime.now().plusDays(6))
                 .bookerId(user.getId())
                 .itemId(item.getId()).build();
-        when(itemService.getItemById(anyLong())).thenReturn(item);
-        when(userService.getUserById(anyLong())).thenThrow(new NotFoundException());
+        when(itemService.getItemById(item.getId())).thenReturn(item);
+        when(userService.getUserById(user.getId())).thenThrow(new NotFoundException());
 
         mockMvc.perform(post("/bookings")
                         .header(USER_ID, user.getId())
@@ -216,13 +234,15 @@ class BookingControllerTest {
 
     @Test
     void add_shouldReturnNotFound_ifItemNotFound() throws Exception {
+        User user = User.builder().id(11).build();
+        Item item = Item.builder().id(22).build();
         BookingDto bookingDto = BookingDto.builder()
                 .start(LocalDateTime.now().plusDays(5))
                 .end(LocalDateTime.now().plusDays(6))
                 .bookerId(user.getId())
                 .itemId(item.getId()).build();
-        when(itemService.getItemById(anyLong())).thenThrow(new NotFoundException());
-        when(userService.getUserById(anyLong())).thenReturn(user);
+        when(itemService.getItemById(item.getId())).thenThrow(new NotFoundException());
+        when(userService.getUserById(user.getId())).thenReturn(user);
 
         mockMvc.perform(post("/bookings")
                         .header(USER_ID, user.getId())
@@ -234,6 +254,8 @@ class BookingControllerTest {
 
     @Test
     void add_shouldReturnBadRequest_ifValidationFailed() throws Exception {
+        User user = User.builder().id(11).build();
+        Item item = Item.builder().id(22).build();
         BookingDto bookingDto = BookingDto.builder()
                 .start(LocalDateTime.now().minusDays(1))
                 .end(LocalDateTime.now().plusDays(6))
@@ -268,6 +290,9 @@ class BookingControllerTest {
 
     @Test
     void approve_shouldCallService() throws Exception {
+        User user = User.builder().id(11).build();
+        Item item = Item.builder().id(22).build();
+        Booking booking1 = Booking.builder().id(33L).booker(user).item(item).build();
         when(bookingService.updateStatus(user.getId(), booking1.getId(), true)).thenReturn(booking1);
 
         mockMvc.perform(patch("/bookings/{bookingId}", booking1.getId())
@@ -279,15 +304,13 @@ class BookingControllerTest {
 
     @Test
     void approve_shouldReturnBadRequest_ifWrongParam() throws Exception {
-        when(bookingService.updateStatus(user.getId(), booking1.getId(), true)).thenReturn(booking1);
-
-        mockMvc.perform(patch("/bookings/{bookingId}", booking1.getId())
-                        .header(USER_ID, user.getId())
+        mockMvc.perform(patch("/bookings/{bookingId}", 1)
+                        .header(USER_ID, 1)
                         .param("approved", "notBoolean"))
                 .andExpect(status().isBadRequest());
 
-        mockMvc.perform(patch("/bookings/{bookingId}", booking1.getId())
-                        .header(USER_ID, user.getId()))
+        mockMvc.perform(patch("/bookings/{bookingId}", 1)
+                        .header(USER_ID, 1))
                 .andExpect(status().isBadRequest());
 
         verify(bookingService, never()).updateStatus(anyLong(), anyLong(), anyBoolean());
@@ -295,10 +318,10 @@ class BookingControllerTest {
 
     @Test
     void approve_shouldReturnNotFound_ifBookingOrUserNotFound() throws Exception {
-        when(bookingService.updateStatus(anyLong(), anyLong(), anyBoolean())).thenThrow(new NotFoundException());
+        when(bookingService.updateStatus(1, 1, true)).thenThrow(new NotFoundException());
 
-        mockMvc.perform(patch("/bookings/{bookingId}", booking1.getId())
-                        .header(USER_ID, user.getId())
+        mockMvc.perform(patch("/bookings/{bookingId}", 1)
+                        .header(USER_ID, 1)
                         .param("approved", "true"))
                 .andExpect(status().isNotFound());
     }

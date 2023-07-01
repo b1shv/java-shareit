@@ -2,6 +2,8 @@ package ru.practicum.shareit.request;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,17 +29,18 @@ import java.util.stream.Collectors;
 @Validated
 @Slf4j
 public class ItemRequestController {
+    private static final String USER_ID = "X-Sharer-User-Id";
     private final ItemRequestService itemRequestService;
     private final ItemRequestMapper itemRequestMapper;
     private final ItemService itemService;
-    private static final String USER_ID = "X-Sharer-User-Id";
 
     @GetMapping("/all")
     public List<ItemRequestDto> getAll(@RequestHeader(USER_ID) long userId,
                                        @PositiveOrZero @RequestParam(defaultValue = "0") int from,
                                        @Positive @RequestParam(defaultValue = "10") int size) {
         log.debug("GET request: all item requests; from = {}, size = {}, user ID = {}", from, size, userId);
-        return itemRequestService.getAllRequests(userId, from, size).stream()
+        int page = from / size;
+        return itemRequestService.getAllRequests(userId, PageRequest.of(page, size, Sort.by("created").descending())).stream()
                 .map(itemRequest ->
                         itemRequestMapper.toDto(itemRequest, itemService.getItemsByRequestId(itemRequest.getId())))
                 .collect(Collectors.toList());

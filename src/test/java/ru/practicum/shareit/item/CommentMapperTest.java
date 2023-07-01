@@ -9,7 +9,7 @@ import ru.practicum.shareit.user.User;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class CommentMapperTest {
     private final CommentMapper commentMapper = new CommentMapper();
@@ -33,7 +33,7 @@ class CommentMapperTest {
                 .authorName(user.getName())
                 .build();
 
-        assertEquals(commentDto, commentMapper.toDto(comment));
+        assertThat(commentMapper.toDto(comment)).isEqualTo(commentDto);
     }
 
     @Test
@@ -55,7 +55,7 @@ class CommentMapperTest {
         List<CommentDto> expected = List.of(commentDto1, commentDto2, commentDto3);
         List<CommentDto> actual = commentMapper.toDto(List.of(comment1, comment2, comment3));
 
-        assertEquals(expected, actual);
+        assertThat(actual).isEqualTo(expected);
     }
 
     @Test
@@ -73,6 +73,6 @@ class CommentMapperTest {
                 .created(created)
                 .build();
 
-        assertEquals(comment, commentMapper.toComment(commentDto, user, item, created));
+        assertThat(commentMapper.toComment(commentDto, user, item, created)).isEqualTo(comment);
     }
 }

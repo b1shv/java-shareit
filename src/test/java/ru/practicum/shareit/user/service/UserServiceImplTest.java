@@ -14,8 +14,8 @@ import ru.practicum.shareit.user.UserRepository;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -25,55 +25,58 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
     @Mock
-    UserRepository userRepository;
+    private UserRepository userRepository;
 
     @InjectMocks
-    UserServiceImpl userService;
-
-    private final User user1 = User.builder().id(1).build();
-    private final User user2 = User.builder().id(2).build();
+    private UserServiceImpl userService;
 
     @Test
     void getAllUsers_shouldReturnListOfUsers() {
+        User user1 = User.builder().id(1).build();
+        User user2 = User.builder().id(2).build();
         List<User> expectedUsers = List.of(user1, user2);
 
         when(userRepository.findAll()).thenReturn(expectedUsers);
 
-        assertEquals(expectedUsers, userService.getAllUsers());
+        assertThat(userService.getAllUsers()).isEqualTo(expectedUsers);
         verify(userRepository, times(1)).findAll();
     }
 
     @Test
     void getUserById_ShouldReturnUser_ifCorrectId() {
+        User user1 = User.builder().id(1).build();
+        User user2 = User.builder().id(2).build();
         when(userRepository.findById(1L)).thenReturn(Optional.of(user1));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user2));
 
-        assertEquals(user1, userService.getUserById(1));
-        assertEquals(user2, userService.getUserById(2));
+        assertThat(userService.getUserById(1)).isEqualTo(user1);
+        assertThat(userService.getUserById(2)).isEqualTo(user2);
         verify(userRepository, times(2)).findById(Mockito.anyLong());
     }
 
     @Test
     void getUserById_ShouldThrowException_ifWrongId() {
-        when(userRepository.findById(Mockito.any())).thenReturn(Optional.empty());
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> userService.getUserById(1));
-        verify(userRepository, times(1)).findById(Mockito.anyLong());
+        assertThatThrownBy(() -> userService.getUserById(1)).isInstanceOf(NotFoundException.class);
+        verify(userRepository, times(1)).findById(1L);
     }
 
     @Test
     void addUser_ShouldReturnUser() {
+        User user1 = User.builder().id(1).build();
         when(userRepository.save(user1)).thenReturn(user1);
 
-        assertEquals(user1, userService.addUser(user1));
+        assertThat(userService.addUser(user1)).isEqualTo(user1);
         verify(userRepository, times(1)).save(user1);
     }
 
     @Test
     void updateUser_ShouldThrowException_ifWrongId() {
-        when(userRepository.findById(Mockito.any())).thenReturn(Optional.empty());
+        User user1 = User.builder().id(1).build();
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> userService.updateUser(1, user1));
+        assertThatThrownBy(() -> userService.updateUser(1, user1)).isInstanceOf(NotFoundException.class);
         verify(userRepository, times(1)).findById(Mockito.anyLong());
         verify(userRepository, never()).save(Mockito.any());
     }

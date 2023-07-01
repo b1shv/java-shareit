@@ -1,9 +1,7 @@
 package ru.practicum.shareit.request.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.request.ItemRequest;
@@ -19,8 +17,8 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     private final UserRepository userRepository;
 
     @Override
-    public List<ItemRequest> getAllRequests(long userId, int from, int size) {
-        return itemRequestRepository.findAllByRequesterIdNot(userId, countPageAndSort(from, size));
+    public List<ItemRequest> getAllRequests(long userId, Pageable pageable) {
+        return itemRequestRepository.findAllByRequesterIdNot(userId, pageable);
     }
 
     @Override
@@ -47,10 +45,5 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         }
 
         return itemRequestRepository.save(itemRequest);
-    }
-
-    private Pageable countPageAndSort(int from, int size) {
-        int page = from / size;
-        return PageRequest.of(page, size, Sort.by("created").descending());
     }
 }

@@ -8,7 +8,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import ru.practicum.shareit.booking.Booking;
 import ru.practicum.shareit.booking.BookingRepository;
 import ru.practicum.shareit.booking.BookingStatus;
@@ -28,11 +27,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -59,69 +57,71 @@ class ItemServiceImplTest {
     @InjectMocks
     private ItemServiceImpl itemService;
 
-    private final Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
-    private final Item item2 = Item.builder().id(2).name("Item 2").ownerId(1).build();
-    private final Item item3 = Item.builder().id(3).name("Item 3").ownerId(2).build();
-
     @Test
     void getItemsByOwnerId_shouldReturnItems_ifUserExists() {
-        int from = 4;
         int size = 3;
-        int expectedPage = 1;
+        int page = 1;
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
+        Item item2 = Item.builder().id(2).name("Item 2").ownerId(1).build();
         List<Item> expected = List.of(item1, item2);
-        when(userRepository.existsById(anyLong())).thenReturn(true);
-        when(itemRepository.findAllByOwnerId(1, PageRequest.of(expectedPage, size)))
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(itemRepository.findAllByOwnerId(1, PageRequest.of(page, size)))
                 .thenReturn(expected);
 
-        assertEquals(expected, itemService.getItemsByOwnerId(1, from, size));
+        assertThat(itemService.getItemsByOwnerId(1, PageRequest.of(page, size))).isEqualTo(expected);
         verify(itemRepository, times(1))
-                .findAllByOwnerId(1, PageRequest.of(expectedPage, size));
+                .findAllByOwnerId(1, PageRequest.of(page, size));
         verify(userRepository, times(1))
-                .existsById(anyLong());
+                .existsById(1L);
     }
 
     @Test
     void getItemsByOwnerId_shouldThrowException_ifUserNotFound() {
-        when(userRepository.existsById(anyLong())).thenReturn(false);
+        when(userRepository.existsById(1L)).thenReturn(false);
 
-        assertThrows(NotFoundException.class, () -> itemService.getItemsByOwnerId(1, 1, 1));
-        verify(itemRepository, never()).findAllByOwnerId(anyLong(), any(Pageable.class));
+        assertThatThrownBy(() -> itemService.getItemsByOwnerId(1, PageRequest.of(0, 10)))
+                .isInstanceOf(NotFoundException.class);
+        verify(itemRepository, never()).findAllByOwnerId(1, PageRequest.of(0, 10));
     }
 
     @Test
     void getItemById_shouldReturnItem_ifExists() {
-        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item1));
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item1));
 
-        assertEquals(item1, itemService.getItemById(1));
+        assertThat(itemService.getItemById(1)).isEqualTo(item1);
     }
 
     @Test
     void getItemById_shouldThrowException_ifItemNotFound() {
-        when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(itemRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> itemService.getItemById(1));
+        assertThatThrownBy(() -> itemService.getItemById(1)).isInstanceOf(NotFoundException.class);
     }
 
     @Test
     void searchText_shouldReturnItems_ifTextNotBlank() {
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
+        Item item2 = Item.builder().id(2).name("Item 2").ownerId(1).build();
         String text = "text";
-        List<Item> expected = List.of(item1, item3);
-        when(itemRepository.searchText(anyString(), any(Pageable.class))).thenReturn(expected);
+        List<Item> expected = List.of(item1, item2);
+        when(itemRepository.searchText(text, PageRequest.of(0, 10))).thenReturn(expected);
 
-        assertEquals(expected, itemService.searchText(text, 1, 2));
+        assertThat(itemService.searchText(text, PageRequest.of(0, 10))).isEqualTo(expected);
     }
 
     @Test
     void searchText_shouldReturnEmptyList_ifTextBlank() {
         String text = "  ";
 
-        assertEquals(Collections.emptyList(), itemService.searchText(text, 1, 2));
-        verify(itemRepository, never()).searchText(anyString(), any(Pageable.class));
+        assertThat(itemService.searchText(text, PageRequest.of(0, 10))).isEmpty();
+        verify(itemRepository, never()).searchText(text, PageRequest.of(0, 10));
     }
 
     @Test
     void addItem_shouldSendItemToRepo_ifUserExists() {
-        when(userRepository.existsById(anyLong())).thenReturn(true);
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
+        when(userRepository.existsById(item1.getOwnerId())).thenReturn(true);
         itemService.addItem(item1);
 
         verify(itemRepository, times(1)).save(item1);
@@ -129,10 +129,11 @@ class ItemServiceImplTest {
 
     @Test
     void addItem_shouldThrowException_ifUserNotFound() {
-        when(userRepository.existsById(anyLong())).thenReturn(false);
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
+        when(userRepository.existsById(item1.getOwnerId())).thenReturn(false);
 
-        assertThrows(NotFoundException.class, () -> itemService.addItem(item1));
-        verify(itemRepository, never()).save(any(Item.class));
+        assertThatThrownBy(() -> itemService.addItem(item1)).isInstanceOf(NotFoundException.class);
+        verify(itemRepository, never()).save(item1);
     }
 
     @Test
@@ -141,24 +142,27 @@ class ItemServiceImplTest {
         when(userRepository.existsById(99L)).thenReturn(true);
         when(itemRequestRepository.existsById(100L)).thenReturn(false);
 
-        assertThrows(NotFoundException.class, () -> itemService.addItem(item6));
-        verify(itemRepository, never()).save(any(Item.class));
+        assertThatThrownBy(() -> itemService.addItem(item6)).isInstanceOf(NotFoundException.class);
+        verify(itemRepository, never()).save(item6);
     }
 
     @Test
     void updateItem_shouldThrowException_ifItemNotFound() {
-        when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
+        when(itemRepository.findById(item1.getId())).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> itemService.updateItem(item1));
-        verify(itemRepository, never()).save(any(Item.class));
+        assertThatThrownBy(() -> itemService.updateItem(item1)).isInstanceOf(NotFoundException.class);
+        verify(itemRepository, never()).save(item1);
     }
 
     @Test
     void updateItem_shouldThrowException_ifUserIsNotOwner() {
-        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item1));
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
+        Item item2 = Item.builder().id(2).name("Item 2").ownerId(2).build();
+        when(itemRepository.findById(item2.getId())).thenReturn(Optional.of(item1));
 
-        assertThrows(ForbiddenException.class, () -> itemService.updateItem(item3));
-        verify(itemRepository, never()).save(any(Item.class));
+        assertThatThrownBy(() -> itemService.updateItem(item2)).isInstanceOf(ForbiddenException.class);
+        verify(itemRepository, never()).save(item2);
     }
 
     @Test
@@ -202,6 +206,7 @@ class ItemServiceImplTest {
 
     @Test
     void addComment_shouldAddComment_ifItemWasBookedByCommentAuthor() {
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
         Comment comment = Comment.builder()
                 .item(item1)
                 .author(User.builder().id(100).build())
@@ -217,6 +222,7 @@ class ItemServiceImplTest {
 
     @Test
     void addComment_shouldThrowException_ifItemWasNotBookedByCommentAuthor() {
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
         Comment comment = Comment.builder()
                 .item(item1)
                 .author(User.builder().id(100).build())
@@ -226,8 +232,8 @@ class ItemServiceImplTest {
                 anyLong(), anyLong(), any(BookingStatus.class), any(LocalDateTime.class)))
                 .thenReturn(Collections.emptyList());
 
-        assertThrows(ValidationException.class, () -> itemService.addComment(comment));
-        verify(commentRepository, never()).save(any(Comment.class));
+        assertThatThrownBy(() -> itemService.addComment(comment)).isInstanceOf(ValidationException.class);
+        verify(commentRepository, never()).save(comment);
     }
 
     @Test
@@ -236,18 +242,21 @@ class ItemServiceImplTest {
         Comment comment2 = Comment.builder().id(2).build();
         Comment comment3 = Comment.builder().id(3).build();
         List<Comment> expected = List.of(comment1, comment2, comment3);
-        when(commentRepository.findAllByItemIdOrderByCreatedDesc(anyLong())).thenReturn(expected);
+        when(commentRepository.findAllByItemIdOrderByCreatedDesc(1L)).thenReturn(expected);
 
-        assertEquals(expected, itemService.getComments(1));
+        assertThat(itemService.getComments(1)).isEqualTo(expected);
         verify(commentRepository, times(1)).findAllByItemIdOrderByCreatedDesc(1);
     }
 
     @Test
     void getItemsByRequestId() {
+        Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
+        Item item2 = Item.builder().id(2).name("Item 2").ownerId(1).build();
+        Item item3 = Item.builder().id(3).name("Item 3").ownerId(2).build();
         List<Item> expected = List.of(item1, item2, item3);
-        when(itemRepository.findAllByRequestId(anyLong())).thenReturn(expected);
+        when(itemRepository.findAllByRequestId(1L)).thenReturn(expected);
 
-        assertEquals(expected, itemService.getItemsByRequestId(1));
+        assertThat(itemService.getItemsByRequestId(1)).isEqualTo(expected);
         verify(itemRepository, times(1)).findAllByRequestId(1);
     }
 }

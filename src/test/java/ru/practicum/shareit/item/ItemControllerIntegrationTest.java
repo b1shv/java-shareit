@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.shareit.booking.Booking;
@@ -26,9 +28,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,78 +40,36 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = ItemController.class)
 @Import({ItemMapper.class, BookingMapper.class, UserMapper.class, CommentMapper.class})
-class ItemControllerTest {
-    @MockBean
-    ItemService itemService;
-
-    @MockBean
-    BookingService bookingService;
-
-    @MockBean
-    UserService userService;
-
-    @Autowired
-    MockMvc mockMvc;
-
-    @Autowired
-    ObjectMapper objectMapper;
-
-    private final Item item1 = Item.builder()
-            .id(1L)
-            .ownerId(1)
-            .name("item 1")
-            .description("text")
-            .available(true)
-            .build();
-    private final Item item2 = Item.builder()
-            .id(2L)
-            .ownerId(1)
-            .name("item 1")
-            .description("text")
-            .available(false)
-            .build();
-    private final User user = User.builder()
-            .id(2)
-            .name("User")
-            .email("user@email.com")
-            .build();
-    private final Booking lastBooking = Booking.builder()
-            .id(4L)
-            .booker(user)
-            .item(item1)
-            .start(LocalDateTime.of(2023, 3, 1, 12, 0))
-            .end(LocalDateTime.of(2023, 3, 5, 12, 0))
-            .status(BookingStatus.APPROVED)
-            .build();
-    private final Booking nextBooking = Booking.builder()
-            .id(12L)
-            .booker(user)
-            .item(item1)
-            .start(LocalDateTime.of(2023, 10, 1, 12, 0))
-            .end(LocalDateTime.of(2023, 10, 5, 12, 0))
-            .status(BookingStatus.APPROVED)
-            .build();
-    private final Comment comment1 = Comment.builder()
-            .id(111)
-            .author(user)
-            .item(item1)
-            .text("text")
-            .created(LocalDateTime.of(2023, 3, 5, 12, 0))
-            .build();
-    private final Comment comment2 = Comment.builder()
-            .id(222)
-            .author(user)
-            .item(item1)
-            .text("text")
-            .created(LocalDateTime.of(2023, 3, 5, 12, 0))
-            .build();
+class ItemControllerIntegrationTest {
     private static final String USER_ID_HEADER = "X-Sharer-User-Id";
-    private static final int DEFAULT_FROM = 0;
-    private static final int DEFAULT_SIZE = 10;
+    private static final Pageable DEFAULT_PAGEABLE = PageRequest.of(0, 10);
+
+    @MockBean
+    private ItemService itemService;
+
+    @MockBean
+    private BookingService bookingService;
+
+    @MockBean
+    private UserService userService;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     void getAll_shouldReturnOwnersItemsWithLastAndNextBookingsAndComments() throws Exception {
-        when(itemService.getItemsByOwnerId(1, DEFAULT_FROM, DEFAULT_SIZE)).thenReturn(List.of(item1, item2));
+        Item item1 = item1();
+        Item item2 = item2();
+        User user = user();
+        Booking lastBooking = lastBooking(user, item1);
+        Booking nextBooking = nextBooking(user, item1);
+        Comment comment1 = comment1(user, item1);
+        Comment comment2 = comment2(user, item1);
+
+        when(itemService.getItemsByOwnerId(1, DEFAULT_PAGEABLE)).thenReturn(List.of(item1, item2));
         when(bookingService.getLastItemBooking(item1.getId())).thenReturn(lastBooking);
         when(bookingService.getNextItemBooking(item1.getId())).thenReturn(nextBooking);
         when(itemService.getComments(item1.getId())).thenReturn(List.of(comment1, comment2));
@@ -143,12 +101,12 @@ class ItemControllerTest {
                         .header(USER_ID_HEADER, 1))
                 .andExpect(status().isBadRequest());
 
-        verify(itemService, never()).getItemsByOwnerId(anyLong(), anyInt(), anyInt());
+        verify(itemService, never()).getItemsByOwnerId(anyLong(), any(Pageable.class));
     }
 
     @Test
     void getAll_shouldReturnNotFound_ifUserNotFound() throws Exception {
-        when(itemService.getItemsByOwnerId(anyLong(), anyInt(), anyInt())).thenThrow(NotFoundException.class);
+        when(itemService.getItemsByOwnerId(1, DEFAULT_PAGEABLE)).thenThrow(NotFoundException.class);
 
         mockMvc.perform(get("/items")
                         .header(USER_ID_HEADER, 1))
@@ -157,6 +115,13 @@ class ItemControllerTest {
 
     @Test
     void getById_ShouldReturnItemWithBookings_ifUserIsOwner() throws Exception {
+        Item item1 = item1();
+        User user = user();
+        Booking lastBooking = lastBooking(user, item1);
+        Booking nextBooking = nextBooking(user, item1);
+        Comment comment1 = comment1(user, item1);
+        Comment comment2 = comment2(user, item1);
+
         when(itemService.getItemById(item1.getId())).thenReturn(item1);
         when(bookingService.getLastItemBooking(item1.getId())).thenReturn(lastBooking);
         when(bookingService.getNextItemBooking(item1.getId())).thenReturn(nextBooking);
@@ -173,6 +138,13 @@ class ItemControllerTest {
 
     @Test
     void getById_ShouldReturnItemWithoutBookings_ifUserIsNotOwner() throws Exception {
+        Item item1 = item1();
+        User user = user();
+        Booking lastBooking = lastBooking(user, item1);
+        Booking nextBooking = nextBooking(user, item1);
+        Comment comment1 = comment1(user, item1);
+        Comment comment2 = comment2(user, item1);
+
         int randomUserId = 113;
         when(itemService.getItemById(item1.getId())).thenReturn(item1);
         when(bookingService.getLastItemBooking(item1.getId())).thenReturn(lastBooking);
@@ -187,13 +159,13 @@ class ItemControllerTest {
                 .andExpect(jsonPath("$.nextBooking").isEmpty())
                 .andExpect(jsonPath("$.comments").isNotEmpty());
 
-        verify(bookingService, never()).getLastItemBooking(anyLong());
-        verify(bookingService, never()).getNextItemBooking(anyLong());
+        verify(bookingService, never()).getLastItemBooking(item1.getId());
+        verify(bookingService, never()).getNextItemBooking(item1.getId());
     }
 
     @Test
     void getById_ShouldReturnNotFound_ifItemNotFound() throws Exception {
-        when(itemService.getItemById(anyLong())).thenThrow(NotFoundException.class);
+        when(itemService.getItemById(1)).thenThrow(NotFoundException.class);
 
         mockMvc.perform(get("/item{id}", 1)
                         .header(USER_ID_HEADER, 1))
@@ -202,7 +174,9 @@ class ItemControllerTest {
 
     @Test
     void search_shouldReturnItems() throws Exception {
-        when(itemService.searchText(anyString(), anyInt(), anyInt())).thenReturn(List.of(item1, item2));
+        Item item1 = item1();
+        Item item2 = item2();
+        when(itemService.searchText("random text", DEFAULT_PAGEABLE)).thenReturn(List.of(item1, item2));
 
         mockMvc.perform(get("/items/search")
                         .param("text", "random text"))
@@ -227,11 +201,12 @@ class ItemControllerTest {
                         .param("text", "random text"))
                 .andExpect(status().isBadRequest());
 
-        verify(itemService, never()).searchText(anyString(), anyInt(), anyInt());
+        verify(itemService, never()).searchText("random text", DEFAULT_PAGEABLE);
     }
 
     @Test
     void add_shouldReturnOk_ifValidationPassedAndUserFound() throws Exception {
+        Item item1 = item1();
         ItemDto item1Dto = ItemDto.builder()
                 .name(item1.getName())
                 .description(item1.getDescription())
@@ -304,6 +279,7 @@ class ItemControllerTest {
 
     @Test
     void update_shouldReturnOk_ifItemFound() throws Exception {
+        Item item1 = item1();
         long randomItemId = 14;
         ItemDto itemDto = ItemDto.builder().name("name").build();
         when(itemService.updateItem(any(Item.class))).thenReturn(item1);
@@ -331,6 +307,8 @@ class ItemControllerTest {
 
     @Test
     void addComment_shouldReturnOk_ifAuthorAndItemFoundAndValidationPassed() throws Exception {
+        Item item1 = item1();
+        User user = user();
         int randomCommentId = 26;
         CommentDto commentDto = CommentDto.builder().text("text text text").build();
         when(itemService.getItemById(item1.getId())).thenReturn(item1);
@@ -362,8 +340,8 @@ class ItemControllerTest {
                         .content(objectMapper.writeValueAsString(commentDto)))
                 .andExpect(status().isBadRequest());
 
-        verify(itemService, never()).getItemById(anyLong());
-        verify(userService, never()).getUserById(anyLong());
+        verify(itemService, never()).getItemById(1);
+        verify(userService, never()).getUserById(1);
         verify(itemService, never()).addComment(any(Comment.class));
     }
 
@@ -389,5 +367,75 @@ class ItemControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(itemService, never()).addComment(any(Comment.class));
+    }
+
+    private Item item1() {
+        return Item.builder()
+                .id(1L)
+                .ownerId(1)
+                .name("item 1")
+                .description("text")
+                .available(true)
+                .build();
+    }
+
+    private Item item2() {
+        return Item.builder()
+                .id(2L)
+                .ownerId(1)
+                .name("item 1")
+                .description("text")
+                .available(false)
+                .build();
+    }
+
+    private User user() {
+        return User.builder()
+                .id(2)
+                .name("User")
+                .email("user@email.com")
+                .build();
+    }
+
+    private Booking lastBooking(User user, Item item) {
+        return Booking.builder()
+                .id(4L)
+                .booker(user)
+                .item(item)
+                .start(LocalDateTime.of(2023, 3, 1, 12, 0))
+                .end(LocalDateTime.of(2023, 3, 5, 12, 0))
+                .status(BookingStatus.APPROVED)
+                .build();
+    }
+
+    private Booking nextBooking(User user, Item item) {
+        return Booking.builder()
+                .id(12L)
+                .booker(user)
+                .item(item)
+                .start(LocalDateTime.of(2023, 10, 1, 12, 0))
+                .end(LocalDateTime.of(2023, 10, 5, 12, 0))
+                .status(BookingStatus.APPROVED)
+                .build();
+    }
+
+    private Comment comment1(User user, Item item) {
+        return Comment.builder()
+                .id(111)
+                .author(user)
+                .item(item)
+                .text("text")
+                .created(LocalDateTime.of(2023, 3, 5, 12, 0))
+                .build();
+    }
+
+    private Comment comment2(User user, Item item) {
+        return Comment.builder()
+                .id(222)
+                .author(user)
+                .item(item)
+                .text("text")
+                .created(LocalDateTime.of(2023, 3, 5, 12, 0))
+                .build();
     }
 }

@@ -15,17 +15,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ItemRequestMapperTest {
     @Mock
-    ItemMapper itemMapper;
+    private ItemMapper itemMapper;
 
     @InjectMocks
-    ItemRequestMapper itemRequestMapper;
+    private ItemRequestMapper itemRequestMapper;
 
     @Test
     void toItemRequest() {
@@ -41,7 +41,7 @@ class ItemRequestMapperTest {
         ItemRequest fromMapper = itemRequestMapper.toItemRequest(itemRequestDto, 3);
         itemRequest.setCreated(fromMapper.getCreated());
 
-        assertEquals(itemRequest, fromMapper);
+        assertThat(fromMapper).isEqualTo(itemRequest);
     }
 
     @Test
@@ -58,7 +58,7 @@ class ItemRequestMapperTest {
                 .created(LocalDateTime.of(2023, 1, 1, 12, 0))
                 .build();
 
-        assertEquals(itemRequestDto, itemRequestMapper.toDto(itemRequest));
+        assertThat(itemRequestMapper.toDto(itemRequest)).isEqualTo(itemRequestDto);
     }
 
     @Test
@@ -78,10 +78,10 @@ class ItemRequestMapperTest {
         List<Item> items = List.of(Item.builder().build(), Item.builder().build());
         when(itemMapper.toDto(any(Item.class))).thenReturn(ItemDto.builder().build());
 
-        assertEquals(itemRequestDto, itemRequestMapper.toDto(itemRequest, Collections.emptyList()));
+        assertThat(itemRequestMapper.toDto(itemRequest, Collections.emptyList())).isEqualTo(itemRequestDto);
 
         itemRequestDto.setItems(items.stream().map(itemMapper::toDto).collect(Collectors.toList()));
 
-        assertEquals(itemRequestDto, itemRequestMapper.toDto(itemRequest, items));
+        assertThat(itemRequestMapper.toDto(itemRequest, items)).isEqualTo(itemRequestDto);
     }
 }

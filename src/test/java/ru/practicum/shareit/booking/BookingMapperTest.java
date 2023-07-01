@@ -1,6 +1,5 @@
 package ru.practicum.shareit.booking;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,8 +16,7 @@ import ru.practicum.shareit.user.dto.UserDto;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,64 +30,89 @@ class BookingMapperTest {
     @InjectMocks
     private BookingMapper bookingMapper;
 
-    private User user;
-    private UserDto userDto;
-    private Item item;
-    private ItemDto itemDto;
-    private Booking booking;
-    private BookingDto bookingDto;
-    private BookingForItemDto bookingForItemDto;
-
-    @BeforeEach
-    void setup() {
-        user = User.builder().id(12).build();
-        userDto = UserDto.builder().id(12).build();
-        item = Item.builder().id(3).build();
-        itemDto = ItemDto.builder().id(3).build();
-        booking = Booking.builder()
-                .booker(user)
-                .item(item)
-                .start(LocalDateTime.of(2023, 1, 1, 12, 0))
-                .end(LocalDateTime.of(2023, 1, 2, 12, 0))
-                .status(BookingStatus.WAITING)
-                .build();
-        bookingDto = BookingDto.builder()
-                .start(LocalDateTime.of(2023, 1, 1, 12, 0))
-                .end(LocalDateTime.of(2023, 1, 2, 12, 0))
-                .build();
-        bookingForItemDto = BookingForItemDto.builder()
-                .id(23L)
-                .bookerId(user.getId())
-                .itemId(item.getId())
-                .start(LocalDateTime.of(2023, 1, 1, 12, 0))
-                .end(LocalDateTime.of(2023, 1, 2, 12, 0))
-                .build();
-    }
-
     @Test
     void toBooking() {
-        assertEquals(booking, bookingMapper.toBooking(bookingDto, item, user));
+        User booker = user(11);
+        Item item = item(22);
+        Booking booking = booking(booker, item);
+        BookingDto bookingDto = bookingDto();
+
+        assertThat(bookingMapper.toBooking(bookingDto, item, booker)).isEqualTo(booking);
     }
 
     @Test
     void toDto() {
+
+        User booker = user(1);
+        Item item = item(2);
+        Booking booking = booking(booker, item);
+        UserDto userDto = userDto(1);
+        ItemDto itemDto = itemDto(2);
+        BookingDto bookingDto = bookingDto();
+
         booking.setId(23L);
         bookingDto.setId(23L);
         booking.setStatus(BookingStatus.APPROVED);
         bookingDto.setStatus(BookingStatus.APPROVED);
         bookingDto.setBooker(userDto);
         bookingDto.setItem(itemDto);
-        when(userMapper.toDto(user)).thenReturn(userDto);
+        when(userMapper.toDto(booker)).thenReturn(userDto);
         when(itemMapper.toDto(item)).thenReturn(itemDto);
 
-        assertEquals(bookingDto, bookingMapper.toDto(booking));
+        assertThat(bookingMapper.toDto(booking)).isEqualTo(bookingDto);
     }
 
     @Test
     void toDtoForItem() {
+        User booker = user(1);
+        Item item = item(2);
+        Booking booking = booking(booker, item);
         booking.setId(23L);
+        BookingForItemDto bookingForItemDto = bookingForItemDto(23L, booker, item);
 
-        assertEquals(bookingForItemDto, bookingMapper.toDtoForItem(booking));
-        assertDoesNotThrow(() -> bookingMapper.toDtoForItem(null));
+        assertThat(bookingMapper.toDtoForItem(booking)).isEqualTo(bookingForItemDto);
+    }
+
+    private User user(long id) {
+        return User.builder().id(id).build();
+    }
+
+    private UserDto userDto(long id) {
+        return UserDto.builder().id(id).build();
+    }
+
+    private Item item(long id) {
+        return Item.builder().id(id).build();
+    }
+
+    private ItemDto itemDto(long id) {
+        return ItemDto.builder().id(id).build();
+    }
+
+    private Booking booking(User booker, Item item) {
+        return Booking.builder()
+                .booker(booker)
+                .item(item)
+                .start(LocalDateTime.of(2023, 1, 1, 12, 0))
+                .end(LocalDateTime.of(2023, 1, 2, 12, 0))
+                .status(BookingStatus.WAITING)
+                .build();
+    }
+
+    private BookingDto bookingDto() {
+        return BookingDto.builder()
+                .start(LocalDateTime.of(2023, 1, 1, 12, 0))
+                .end(LocalDateTime.of(2023, 1, 2, 12, 0))
+                .build();
+    }
+
+    private BookingForItemDto bookingForItemDto(long id, User booker, Item item) {
+        return BookingForItemDto.builder()
+                .id(id)
+                .bookerId(booker.getId())
+                .itemId(item.getId())
+                .start(LocalDateTime.of(2023, 1, 1, 12, 0))
+                .end(LocalDateTime.of(2023, 1, 2, 12, 0))
+                .build();
     }
 }

@@ -5,67 +5,58 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.item.ItemRepository;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.request.ItemRequest;
 import ru.practicum.shareit.request.service.ItemRequestService;
 import ru.practicum.shareit.user.User;
-import ru.practicum.shareit.user.service.UserService;
+import ru.practicum.shareit.user.UserRepository;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
+@DirtiesContext
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 class ItemServiceImplIntegrationTest {
-    @Autowired
     private final ItemServiceImpl itemService;
-
-    @Autowired
-    private final UserService userService;
-
-    @Autowired
+    private final ItemRepository itemRepository;
+    private final UserRepository userRepository;
     private final ItemRequestService itemRequestService;
 
-    private static User user1;
-    private static User user2;
-    private static Item item1;
-    private static Item item2;
-    private static Item item3;
-    private static Item item4;
-
     @BeforeAll
-    static void setup(@Autowired ItemServiceImpl itemService,
-                      @Autowired UserService userService,
-                      @Autowired ItemRequestService itemRequestService) {
-        user1 = userService.addUser(User.builder().name("Name1").email("user1@email.com").build());
-        user2 = userService.addUser(User.builder().name("Name2").email("user2@email.com").build());
-        item1 = itemService.addItem(Item.builder()
-                .ownerId(user1.getId()).name("Item1")
+    static void setup(@Autowired ItemRepository itemRepository,
+                      @Autowired UserRepository userRepository) {
+        userRepository.save(User.builder().name("Name1").email("user1@email.com").build());
+        userRepository.save(User.builder().name("Name2").email("user2@email.com").build());
+        itemRepository.save(Item.builder()
+                .ownerId(1).name("Item1")
                 .description("Something useless but pretty")
                 .available(true)
                 .build());
-        item2 = itemService.addItem(Item.builder()
-                .ownerId(user2.getId())
+        itemRepository.save(Item.builder()
+                .ownerId(2)
                 .name("Item2")
                 .description("Something very useful")
                 .available(true)
                 .build());
-        item3 = itemService.addItem(Item.builder()
+        itemRepository.save(Item.builder()
                 .available(true)
-                .ownerId(user1.getId())
+                .ownerId(1)
                 .name("Item3")
                 .description("Everyone's favorite thing")
                 .build());
-        item4 = itemService.addItem(Item.builder()
+        itemRepository.save(Item.builder()
                 .available(true)
-                .ownerId(user2.getId())
+                .ownerId(2)
                 .name("Barbie doll")
                 .description("Nothing to say")
                 .build());
@@ -73,54 +64,57 @@ class ItemServiceImplIntegrationTest {
 
     @Test
     void getItemsByOwnerId() {
-        List<Item> expected = List.of(item1, item3);
-        List<Item> actual = itemService.getItemsByOwnerId(user1.getId(), 0, 5);
+        List<Item> expected = List.of(itemService.getItemById(1), itemService.getItemById(3));
+        List<Item> actual = itemService.getItemsByOwnerId(1, PageRequest.of(0, 5));
 
-        assertEquals(expected, actual);
-        assertThrows(NotFoundException.class, () -> itemService.getItemsByOwnerId(100, 0, 5));
+        assertThat(actual).isEqualTo(expected);
+        assertThatThrownBy(() -> itemService.getItemsByOwnerId(100, PageRequest.of(0, 5)))
+                .isInstanceOf(NotFoundException.class);
     }
 
     @Test
     void searchText() {
-        assertEquals(List.of(item1, item2), itemService.searchText("uSe", 0, 5));
-        assertEquals(List.of(item4), itemService.searchText("doll", 0, 5));
-        assertEquals(Collections.emptyList(), itemService.searchText("garbage", 0, 5));
+        assertThat(itemService.searchText("uSe", PageRequest.of(0, 15)))
+                .isEqualTo(List.of(itemService.getItemById(1), itemService.getItemById(2)));
+        assertThat(itemService.searchText("doll", PageRequest.of(0, 5)))
+                .isEqualTo(List.of(itemService.getItemById(4)));
+        assertThat(itemService.searchText("garbage", PageRequest.of(0, 5))).isEmpty();
     }
 
     @Test
     void getItemsByRequestId() {
         ItemRequest request1 = itemRequestService.addRequest(ItemRequest.builder()
-                .requesterId(user1.getId())
+                .requesterId(1)
                 .description("Text")
                 .created(LocalDateTime.now())
                 .build());
         ItemRequest request2 = itemRequestService.addRequest(ItemRequest.builder()
-                .requesterId(user2.getId())
+                .requesterId(2)
                 .description("Another text")
                 .created(LocalDateTime.now())
                 .build());
         Item item5 = itemService.addItem(Item.builder()
-                .ownerId(user2.getId())
+                .ownerId(2)
                 .name("Item5")
                 .description("Item")
                 .available(true)
                 .requestId(request1.getId())
                 .build());
         Item item6 = itemService.addItem(Item.builder()
-                .ownerId(user2.getId())
+                .ownerId(2)
                 .name("Item6")
                 .description("Another item")
                 .available(true)
                 .requestId(request1.getId())
                 .build());
         Item item7 = itemService.addItem(Item.builder()
-                .ownerId(user2.getId())
+                .ownerId(2)
                 .name("Item7")
                 .description("One more item")
                 .available(true)
                 .requestId(request2.getId()).build());
 
-        assertEquals(List.of(item5, item6), itemService.getItemsByRequestId(request1.getId()));
-        assertEquals(List.of(item7), itemService.getItemsByRequestId(request2.getId()));
+        assertThat(itemService.getItemsByRequestId(request1.getId())).isEqualTo(List.of(item5, item6));
+        assertThat(itemService.getItemsByRequestId(request2.getId())).isEqualTo(List.of(item7));
     }
 }

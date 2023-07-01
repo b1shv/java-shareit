@@ -2,6 +2,8 @@ package ru.practicum.shareit.booking;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,14 +33,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Validated
 public class BookingController {
-    private final BookingService bookingService;
-    private final UserService userService;
-    private final ItemService itemService;
-    private final BookingMapper bookingMapper;
     private static final String USER_ID = "X-Sharer-User-Id";
     private static final String DEFAULT_STATE = "ALL";
     private static final String DEFAULT_FROM = "0";
     private static final String DEFAULT_SIZE = "10";
+    private final BookingService bookingService;
+    private final UserService userService;
+    private final ItemService itemService;
+    private final BookingMapper bookingMapper;
 
     @GetMapping("/{bookingId}")
     public BookingDto getById(@RequestHeader(USER_ID) long userId,
@@ -53,7 +55,8 @@ public class BookingController {
                                           @PositiveOrZero @RequestParam(defaultValue = DEFAULT_FROM) int from,
                                           @Positive @RequestParam(defaultValue = DEFAULT_SIZE) int size) {
         log.debug("GET request: all booking of user ID {}, state {}", bookerId, stateName);
-        return bookingService.getBookingsByBookerId(bookerId, stateName, from, size).stream()
+        int page = from / size;
+        return bookingService.getBookingsByBookerId(bookerId, stateName, PageRequest.of(page, size, Sort.by("start").descending())).stream()
                 .map(bookingMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -64,7 +67,8 @@ public class BookingController {
                                          @PositiveOrZero @RequestParam(defaultValue = DEFAULT_FROM) int from,
                                          @Positive @RequestParam(defaultValue = DEFAULT_SIZE) int size) {
         log.debug("GET request: all bookings of items of user ID {}, state {}", ownerId, stateName);
-        return bookingService.getBookingsByOwnerId(ownerId, stateName, from, size).stream()
+        int page = from / size;
+        return bookingService.getBookingsByOwnerId(ownerId, stateName, PageRequest.of(page, size, Sort.by("start").descending())).stream()
                 .map(bookingMapper::toDto)
                 .collect(Collectors.toList());
     }
