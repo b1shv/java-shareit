@@ -67,12 +67,6 @@ class ItemRepositoryIntegrationTest {
                 .ownerId(user1.getId())
                 .available(true)
                 .build());
-        System.out.println(user1.getId());
-        System.out.println(user2.getId());
-        System.out.println(request1.getId());
-        System.out.println(request2.getId());
-        System.out.println(userRepository.findAll());
-        System.out.println(itemRequestRepository.findAll());
     }
 
     @Test

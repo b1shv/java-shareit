@@ -28,9 +28,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -84,6 +85,11 @@ class ItemControllerIntegrationTest {
                 .andExpect(jsonPath("$.[0].comments[0].id").value(comment1.getId()))
                 .andExpect(jsonPath("$.[0].comments[1].id").value(comment2.getId()))
                 .andExpect(jsonPath("$.[1].id").value(item2.getId()));
+
+        verify(itemService, times(1)).getItemsByOwnerId(1, DEFAULT_PAGEABLE);
+        verify(itemService, times(1)).getComments(item1.getId());
+        verify(bookingService, times(1)).getLastItemBooking(item1.getId());
+        verify(bookingService, times(1)).getNextItemBooking(item1.getId());
     }
 
     @Test
@@ -101,7 +107,7 @@ class ItemControllerIntegrationTest {
                         .header(USER_ID_HEADER, 1))
                 .andExpect(status().isBadRequest());
 
-        verify(itemService, never()).getItemsByOwnerId(anyLong(), any(Pageable.class));
+        verifyNoInteractions(itemService);
     }
 
     @Test
@@ -111,6 +117,8 @@ class ItemControllerIntegrationTest {
         mockMvc.perform(get("/items")
                         .header(USER_ID_HEADER, 1))
                 .andExpect(status().isNotFound());
+
+        verify(itemService, times(1)).getItemsByOwnerId(1, DEFAULT_PAGEABLE);
     }
 
     @Test
@@ -134,6 +142,11 @@ class ItemControllerIntegrationTest {
                 .andExpect(jsonPath("$.lastBooking.id").value(lastBooking.getId()))
                 .andExpect(jsonPath("$.nextBooking.id").value(nextBooking.getId()))
                 .andExpect(jsonPath("$.comments").isNotEmpty());
+
+        verify(itemService, times(1)).getItemById(item1.getId());
+        verify(itemService, times(1)).getComments(item1.getId());
+        verify(bookingService, times(1)).getLastItemBooking(item1.getId());
+        verify(bookingService, times(1)).getNextItemBooking(item1.getId());
     }
 
     @Test
@@ -159,17 +172,20 @@ class ItemControllerIntegrationTest {
                 .andExpect(jsonPath("$.nextBooking").isEmpty())
                 .andExpect(jsonPath("$.comments").isNotEmpty());
 
-        verify(bookingService, never()).getLastItemBooking(item1.getId());
-        verify(bookingService, never()).getNextItemBooking(item1.getId());
+        verify(itemService, times(1)).getItemById(item1.getId());
+        verify(itemService, times(1)).getComments(item1.getId());
+        verifyNoInteractions(bookingService);
     }
 
     @Test
     void getById_ShouldReturnNotFound_ifItemNotFound() throws Exception {
         when(itemService.getItemById(1)).thenThrow(NotFoundException.class);
 
-        mockMvc.perform(get("/item{id}", 1)
+        mockMvc.perform(get("/items/{id}", 1)
                         .header(USER_ID_HEADER, 1))
                 .andExpect(status().isNotFound());
+
+        verify(itemService, times(1)).getItemById(1);
     }
 
     @Test
@@ -184,6 +200,8 @@ class ItemControllerIntegrationTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.[0].id").value(item1.getId()))
                 .andExpect(jsonPath("$.[1].id").value(item2.getId()));
+
+        verify(itemService, times(1)).searchText("random text", DEFAULT_PAGEABLE);
     }
 
     @Test
@@ -201,7 +219,7 @@ class ItemControllerIntegrationTest {
                         .param("text", "random text"))
                 .andExpect(status().isBadRequest());
 
-        verify(itemService, never()).searchText("random text", DEFAULT_PAGEABLE);
+        verifyNoInteractions(itemService);
     }
 
     @Test
@@ -223,6 +241,8 @@ class ItemControllerIntegrationTest {
                 .andExpect(jsonPath("$.name").value(item1.getName()))
                 .andExpect(jsonPath("$.description").value(item1.getDescription()))
                 .andExpect(jsonPath("$.available").value(item1.getAvailable()));
+
+        verify(itemService, times(1)).addItem(any(Item.class));
     }
 
     @Test
@@ -258,7 +278,7 @@ class ItemControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(itemDtoNoAvailable)))
                 .andExpect(status().isBadRequest());
 
-        verify(itemService, never()).addItem(any(Item.class));
+        verifyNoInteractions(itemService);
     }
 
     @Test
@@ -275,6 +295,8 @@ class ItemControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(itemDto)))
                 .andExpect(status().isNotFound());
+
+        verify(itemService, times(1)).addItem(any(Item.class));
     }
 
     @Test
@@ -290,6 +312,8 @@ class ItemControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(itemDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(item1.getId()));
+
+        verify(itemService, times(1)).updateItem(any(Item.class));
     }
 
     @Test
@@ -303,6 +327,8 @@ class ItemControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(itemDto)))
                 .andExpect(status().isNotFound());
+
+        verify(itemService, times(1)).updateItem(any(Item.class));
     }
 
     @Test
@@ -328,6 +354,10 @@ class ItemControllerIntegrationTest {
                 .andExpect(jsonPath("$.authorName").value(user.getName()))
                 .andExpect(jsonPath("$.text").value(commentDto.getText()))
                 .andExpect(jsonPath("$.created").isNotEmpty());
+
+        verify(itemService, times(1)).getItemById(item1.getId());
+        verify(userService, times(1)).getUserById(user.getId());
+        verify(itemService, times(1)).addComment(any(Comment.class));
     }
 
     @Test
@@ -340,9 +370,8 @@ class ItemControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(commentDto)))
                 .andExpect(status().isBadRequest());
 
-        verify(itemService, never()).getItemById(1);
-        verify(userService, never()).getUserById(1);
-        verify(itemService, never()).addComment(any(Comment.class));
+        verifyNoInteractions(itemService);
+        verifyNoInteractions(userService);
     }
 
     @Test

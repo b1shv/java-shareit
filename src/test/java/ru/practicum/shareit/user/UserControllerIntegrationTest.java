@@ -13,6 +13,10 @@ import ru.practicum.shareit.user.service.UserService;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -39,6 +43,8 @@ class UserControllerIntegrationTest {
     void getAll_shouldReturnOk() throws Exception {
         mockMvc.perform(get("/users"))
                 .andExpect(status().isOk());
+
+        verify(userService, times(1)).getAllUsers();
     }
 
     @Test
@@ -49,6 +55,8 @@ class UserControllerIntegrationTest {
         mockMvc.perform(get("/users/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(id)));
+
+        verify(userService, times(1)).getUserById(id);
     }
 
     @Test
@@ -57,6 +65,8 @@ class UserControllerIntegrationTest {
 
         mockMvc.perform(get("/users/{id}", 3))
                 .andExpect(status().isNotFound());
+
+        verify(userService, times(1)).getUserById(3);
     }
 
     @Test
@@ -76,6 +86,8 @@ class UserControllerIntegrationTest {
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.name").value(userDto.getName()))
                 .andExpect(jsonPath("$.email").value(userDto.getEmail()));
+
+        verify(userService, times(1)).addUser(any(User.class));
     }
 
     @Test
@@ -93,6 +105,8 @@ class UserControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userDto)))
                 .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
     }
 
     @Test
@@ -107,6 +121,8 @@ class UserControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(1)))
                 .andExpect(jsonPath("$.name", is("FFF")));
+
+        verify(userService, times(1)).updateUser(anyLong(), any());
     }
 
     @Test
@@ -117,11 +133,15 @@ class UserControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(UserDto.builder().build())))
                 .andExpect(status().isNotFound());
+
+        verify(userService, times(1)).updateUser(anyLong(), any());
     }
 
     @Test
     void delete_shouldReturnOk() throws Exception {
         mockMvc.perform(delete("/users/{id}", 1))
                 .andExpect(status().isOk());
+
+        verify(userService, times(1)).deleteUser(1L);
     }
 }

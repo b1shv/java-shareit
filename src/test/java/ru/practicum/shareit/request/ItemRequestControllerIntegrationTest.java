@@ -22,8 +22,9 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({ItemRequestMapper.class, ItemMapper.class})
 class ItemRequestControllerIntegrationTest {
     private static final String USER_ID = "X-Sharer-User-Id";
+    private static Pageable DEFAULT_PAGEABLE = PageRequest.of(0, 10, Sort.by("created").descending());
 
     @MockBean
     private ItemRequestService itemRequestService;
@@ -53,7 +55,7 @@ class ItemRequestControllerIntegrationTest {
         ItemRequest itemRequest1 = ItemRequest.builder().id(1).build();
         ItemRequest itemRequest2 = ItemRequest.builder().id(2).build();
         when(itemService.getItemsByRequestId(userId)).thenReturn(Collections.emptyList());
-        when(itemRequestService.getAllRequests(userId, PageRequest.of(0, 10, Sort.by("created").descending())))
+        when(itemRequestService.getAllRequests(userId, DEFAULT_PAGEABLE))
                 .thenReturn(List.of(itemRequest1, itemRequest2));
 
         mockMvc.perform(get("/requests/all")
@@ -62,6 +64,9 @@ class ItemRequestControllerIntegrationTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.[0].id").value(itemRequest1.getId()))
                 .andExpect(jsonPath("$.[1].id").value(itemRequest2.getId()));
+
+        verify(itemRequestService, times(1)).getAllRequests(userId, DEFAULT_PAGEABLE);
+        verify(itemService, times(1)).getItemsByRequestId(1);
     }
 
     @Test
@@ -79,7 +84,7 @@ class ItemRequestControllerIntegrationTest {
                         .param("size", wrongSize))
                 .andExpect(status().isBadRequest());
 
-        verify(itemRequestService, never()).getAllRequests(anyLong(), any(Pageable.class));
+        verifyNoInteractions(itemRequestService);
     }
 
     @Test
@@ -96,6 +101,9 @@ class ItemRequestControllerIntegrationTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.[0].id").value(itemRequest1.getId()))
                 .andExpect(jsonPath("$.[1].id").value(itemRequest2.getId()));
+
+        verify(itemRequestService, times(1)).getAllByRequesterId(userId);
+        verify(itemService, times(2)).getItemsByRequestId(anyLong());
     }
 
     @Test
@@ -105,6 +113,8 @@ class ItemRequestControllerIntegrationTest {
         mockMvc.perform(get("/requests")
                         .header(USER_ID, 1))
                 .andExpect(status().isNotFound());
+
+        verify(itemRequestService, times(1)).getAllByRequesterId(1);
     }
 
     @Test
@@ -118,6 +128,8 @@ class ItemRequestControllerIntegrationTest {
                         .header(USER_ID, 1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(requestId));
+
+        verify(itemRequestService, times(1)).getRequestById(1, requestId);
     }
 
     @Test
@@ -127,6 +139,8 @@ class ItemRequestControllerIntegrationTest {
         mockMvc.perform(get("/requests/{id}", 1)
                         .header(USER_ID, 1))
                 .andExpect(status().isNotFound());
+
+        verify(itemRequestService, times(1)).getRequestById(1, 1);
     }
 
     @Test
@@ -145,6 +159,8 @@ class ItemRequestControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(requestId));
+
+        verify(itemRequestService, times(1)).addRequest(any(ItemRequest.class));
     }
 
     @Test
@@ -156,6 +172,8 @@ class ItemRequestControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dtoWithoutDescription)))
                 .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(itemRequestService);
     }
 
     @Test
@@ -168,5 +186,7 @@ class ItemRequestControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isNotFound());
+
+        verify(itemRequestService, times(1)).addRequest(any(ItemRequest.class));
     }
 }

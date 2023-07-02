@@ -25,11 +25,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -69,6 +67,7 @@ class BookingControllerIntegrationTest {
                         .header(USER_ID, user.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(booking1.getId()));
+        verify(bookingService, times(1)).getBookingById(33, 11);
     }
 
     @Test
@@ -81,6 +80,7 @@ class BookingControllerIntegrationTest {
         mockMvc.perform(get("/bookings/{bookingId}", booking1.getId())
                         .header(USER_ID, user.getId()))
                 .andExpect(status().isNotFound());
+        verify(bookingService, times(1)).getBookingById(33, 11);
     }
 
     @Test
@@ -100,6 +100,8 @@ class BookingControllerIntegrationTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.[0].id").value(booking1.getId()))
                 .andExpect(jsonPath("$.[1].id").value(booking2.getId()));
+        verify(bookingService, times(1)).getBookingsByBookerId(11, "CURRENT",
+                DEFAULT_PAGEABLE);
     }
 
     @Test
@@ -119,8 +121,7 @@ class BookingControllerIntegrationTest {
                         .header(USER_ID, 1))
                 .andExpect(status().isBadRequest());
 
-        verify(bookingService, never()).getBookingsByBookerId(
-                1, "CURRENT", DEFAULT_PAGEABLE);
+        verifyNoInteractions(bookingService);
     }
 
     @Test
@@ -132,6 +133,8 @@ class BookingControllerIntegrationTest {
                         .param("state", "CURRENT")
                         .header(USER_ID, 1))
                 .andExpect(status().isNotFound());
+        verify(bookingService, times(1)).getBookingsByBookerId(1, "CURRENT",
+                DEFAULT_PAGEABLE);
     }
 
     @Test
@@ -150,6 +153,8 @@ class BookingControllerIntegrationTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.[0].id").value(booking1.getId()))
                 .andExpect(jsonPath("$.[1].id").value(booking2.getId()));
+        verify(bookingService, times(1)).getBookingsByOwnerId(11, "CURRENT",
+                DEFAULT_PAGEABLE);
     }
 
     @Test
@@ -169,7 +174,7 @@ class BookingControllerIntegrationTest {
                         .header(USER_ID, 1))
                 .andExpect(status().isBadRequest());
 
-        verify(bookingService, never()).getBookingsByOwnerId(1L, "CURRENT", DEFAULT_PAGEABLE);
+        verifyNoInteractions(bookingService);
     }
 
     @Test
@@ -181,6 +186,9 @@ class BookingControllerIntegrationTest {
                         .param("state", "CURRENT")
                         .header(USER_ID, 1))
                 .andExpect(status().isNotFound());
+
+        verify(bookingService, times(1)).getBookingsByOwnerId(1, "CURRENT",
+                DEFAULT_PAGEABLE);
     }
 
     @Test
@@ -210,6 +218,8 @@ class BookingControllerIntegrationTest {
                 .andExpect(jsonPath("$.id").value(randomBookingId))
                 .andExpect(jsonPath("$.item.id").value(item.getId()))
                 .andExpect(jsonPath("$.booker.id").value(user.getId()));
+
+        verify(bookingService, times(1)).addBooking(any(Booking.class));
     }
 
     @Test
@@ -229,7 +239,8 @@ class BookingControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(bookingDto)))
                 .andExpect(status().isNotFound());
-        verify(bookingService, never()).addBooking(any(Booking.class));
+
+        verifyNoInteractions(bookingService);
     }
 
     @Test
@@ -249,7 +260,8 @@ class BookingControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(bookingDto)))
                 .andExpect(status().isNotFound());
-        verify(bookingService, never()).addBooking(any(Booking.class));
+
+        verifyNoInteractions(bookingService);
     }
 
     @Test
@@ -285,7 +297,7 @@ class BookingControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(bookingDto)))
                 .andExpect(status().isBadRequest());
 
-        verify(bookingService, never()).addBooking(any(Booking.class));
+        verifyNoInteractions(bookingService);
     }
 
     @Test
@@ -299,6 +311,7 @@ class BookingControllerIntegrationTest {
                         .param("approved", "true")
                         .header(USER_ID, user.getId()))
                 .andExpect(status().isOk());
+
         verify(bookingService, times(1)).updateStatus(user.getId(), booking1.getId(), true);
     }
 
@@ -313,7 +326,7 @@ class BookingControllerIntegrationTest {
                         .header(USER_ID, 1))
                 .andExpect(status().isBadRequest());
 
-        verify(bookingService, never()).updateStatus(anyLong(), anyLong(), anyBoolean());
+        verifyNoInteractions(bookingService);
     }
 
     @Test
@@ -324,5 +337,7 @@ class BookingControllerIntegrationTest {
                         .header(USER_ID, 1)
                         .param("approved", "true"))
                 .andExpect(status().isNotFound());
+
+        verify(bookingService, times(1)).updateStatus(1, 1, true);
     }
 }
