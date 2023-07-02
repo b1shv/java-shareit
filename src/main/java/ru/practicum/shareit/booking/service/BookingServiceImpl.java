@@ -1,35 +1,25 @@
 package ru.practicum.shareit.booking.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.booking.Booking;
 import ru.practicum.shareit.booking.BookingRepository;
 import ru.practicum.shareit.booking.BookingStatus;
-import ru.practicum.shareit.booking.Booking_;
 import ru.practicum.shareit.booking.dto.BookingState;
 import ru.practicum.shareit.exception.ForbiddenException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.exception.ValidationException;
 import ru.practicum.shareit.user.UserRepository;
 
-import java.util.Collections;
 import java.util.List;
-
-import static ru.practicum.shareit.booking.BookingSpecifications.bookerId;
-import static ru.practicum.shareit.booking.BookingSpecifications.endInFuture;
-import static ru.practicum.shareit.booking.BookingSpecifications.endInPast;
-import static ru.practicum.shareit.booking.BookingSpecifications.ownerId;
-import static ru.practicum.shareit.booking.BookingSpecifications.startInFuture;
-import static ru.practicum.shareit.booking.BookingSpecifications.startInPast;
-import static ru.practicum.shareit.booking.BookingSpecifications.status;
 
 @Service
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
-    private static final Sort SORT_BY_START_DESC = Sort.by(Sort.Direction.DESC, Booking_.START);
 
     @Override
     public Booking getBookingById(long bookingId, long userId) {
@@ -77,68 +67,32 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public List<Booking> getBookingsByBookerId(long bookerId, String stateName) {
+    public List<Booking> getBookingsByBookerId(long bookerId, String stateName, Pageable pageable) {
         if (!userRepository.existsById(bookerId)) {
             throw new NotFoundException(String.format("User ID %d is not found", bookerId));
         }
 
         try {
             BookingState state = BookingState.valueOf(stateName);
-            switch (state) {
-                case ALL:
-                    return bookingRepository.findAll(bookerId(bookerId), SORT_BY_START_DESC);
-                case WAITING:
-                    return bookingRepository.findAll(
-                            bookerId(bookerId).and(status(BookingStatus.WAITING)), SORT_BY_START_DESC);
-                case REJECTED:
-                    return bookingRepository.findAll(
-                            bookerId(bookerId).and(status(BookingStatus.REJECTED)), SORT_BY_START_DESC);
-                case CURRENT:
-                    return bookingRepository.findAll(
-                            bookerId(bookerId).and(startInPast()).and(endInFuture()), SORT_BY_START_DESC);
-                case PAST:
-                    return bookingRepository.findAll(
-                            bookerId(bookerId).and(endInPast()), SORT_BY_START_DESC);
-                case FUTURE:
-                    return bookingRepository.findAll(
-                            bookerId(bookerId).and(startInFuture()), SORT_BY_START_DESC);
-                default:
-                    return Collections.emptyList();
-            }
+            Specification<Booking> byBookerId = (r, q, cb) -> cb.equal(r.<Long>get("booker").get("id"), bookerId);
+            return bookingRepository.findAll(Specification.where(byBookerId).and(state.getSpecification()),
+                    pageable).getContent();
         } catch (IllegalArgumentException e) {
             throw new ValidationException(String.format("Unknown state: %s", stateName));
         }
     }
 
     @Override
-    public List<Booking> getBookingsByOwnerId(long ownerId, String stateName) {
+    public List<Booking> getBookingsByOwnerId(long ownerId, String stateName, Pageable pageable) {
         if (!userRepository.existsById(ownerId)) {
             throw new NotFoundException(String.format("User ID %d is not found", ownerId));
         }
 
         try {
             BookingState state = BookingState.valueOf(stateName);
-            switch (state) {
-                case ALL:
-                    return bookingRepository.findAll(ownerId(ownerId), SORT_BY_START_DESC);
-                case WAITING:
-                    return bookingRepository.findAll(
-                            ownerId(ownerId).and(status(BookingStatus.WAITING)), SORT_BY_START_DESC);
-                case REJECTED:
-                    return bookingRepository.findAll(
-                            ownerId(ownerId).and(status(BookingStatus.REJECTED)), SORT_BY_START_DESC);
-                case CURRENT:
-                    return bookingRepository.findAll(
-                            ownerId(ownerId).and(startInPast()).and(endInFuture()), SORT_BY_START_DESC);
-                case PAST:
-                    return bookingRepository.findAll(
-                            ownerId(ownerId).and(endInPast()), SORT_BY_START_DESC);
-                case FUTURE:
-                    return bookingRepository.findAll(
-                            ownerId(ownerId).and(startInFuture()), SORT_BY_START_DESC);
-                default:
-                    return Collections.emptyList();
-            }
+            Specification<Booking> byOwnerId = (r, q, cb) -> cb.equal(r.<Long>get("item").get("ownerId"), ownerId);
+            return bookingRepository.findAll(Specification.where(byOwnerId).and(state.getSpecification()),
+                    pageable).getContent();
         } catch (IllegalArgumentException e) {
             throw new ValidationException(String.format("Unknown state: %s", stateName));
         }
@@ -146,11 +100,11 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public Booking getLastItemBooking(long itemId) {
-        return bookingRepository.findLastItemBooking(itemId, BookingStatus.REJECTED.name());
+        return bookingRepository.findLastItemBooking(itemId);
     }
 
     @Override
     public Booking getNextItemBooking(long itemId) {
-        return bookingRepository.findNextItemBooking(itemId, BookingStatus.REJECTED.name());
+        return bookingRepository.findNextItemBooking(itemId);
     }
 }
