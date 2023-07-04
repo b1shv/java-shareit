@@ -73,12 +73,12 @@ class ItemRepositoryIntegrationTest {
     void findAllByOwnerId() {
         List<Item> expectedUser1 = List.of(itemRepository.findById(1L).get(), itemRepository.findById(3L).get());
         List<Item> expectedUser2 = List.of(itemRepository.findById(2L).get());
-        List<Item> actualUser1 = itemRepository.findAllByOwnerId(1, PageRequest.of(0, 5));
-        List<Item> actualUser2 = itemRepository.findAllByOwnerId(2, PageRequest.of(0, 5));
+        List<Item> actualUser1 = itemRepository.findAllByOwnerIdOrderById(1, PageRequest.of(0, 5));
+        List<Item> actualUser2 = itemRepository.findAllByOwnerIdOrderById(2, PageRequest.of(0, 5));
 
         assertThat(actualUser1).isEqualTo(expectedUser1);
         assertThat(actualUser2).isEqualTo(expectedUser2);
-        assertThat(itemRepository.findAllByOwnerId(10, PageRequest.of(0, 5))).isEmpty();
+        assertThat(itemRepository.findAllByOwnerIdOrderById(10, PageRequest.of(0, 5))).isEmpty();
     }
 
     @Test

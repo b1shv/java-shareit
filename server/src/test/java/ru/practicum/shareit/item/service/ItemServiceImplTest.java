@@ -65,12 +65,12 @@ class ItemServiceImplTest {
         Item item2 = Item.builder().id(2).name("Item 2").ownerId(1).build();
         List<Item> expected = List.of(item1, item2);
         when(userRepository.existsById(1L)).thenReturn(true);
-        when(itemRepository.findAllByOwnerId(1, PageRequest.of(page, size)))
+        when(itemRepository.findAllByOwnerIdOrderById(1, PageRequest.of(page, size)))
                 .thenReturn(expected);
 
         assertThat(itemService.getItemsByOwnerId(1, PageRequest.of(page, size))).isEqualTo(expected);
         verify(itemRepository, times(1))
-                .findAllByOwnerId(1, PageRequest.of(page, size));
+                .findAllByOwnerIdOrderById(1, PageRequest.of(page, size));
         verify(userRepository, times(1))
                 .existsById(1L);
     }
@@ -81,7 +81,7 @@ class ItemServiceImplTest {
 
         assertThatThrownBy(() -> itemService.getItemsByOwnerId(1, PageRequest.of(0, 10)))
                 .isInstanceOf(NotFoundException.class);
-        verify(itemRepository, never()).findAllByOwnerId(1, PageRequest.of(0, 10));
+        verify(itemRepository, never()).findAllByOwnerIdOrderById(1, PageRequest.of(0, 10));
     }
 
     @Test
