@@ -33,7 +33,7 @@ public class ItemServiceImpl implements ItemService {
             throw new NotFoundException(String.format("User ID %d is not found", ownerId));
         }
 
-        return itemRepository.findAllByOwnerId(ownerId, pageable);
+        return itemRepository.findAllByOwnerIdOrderById(ownerId, pageable);
     }
 
     @Override
