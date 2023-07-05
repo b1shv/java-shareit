@@ -20,7 +20,6 @@ import javax.validation.Valid;
 import javax.validation.constraints.Positive;
 import javax.validation.constraints.PositiveOrZero;
 import java.util.Collections;
-import java.util.Optional;
 
 @Controller
 @RequestMapping(path = "/items")
