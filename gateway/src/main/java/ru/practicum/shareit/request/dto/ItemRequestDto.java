@@ -8,7 +8,7 @@ import javax.validation.constraints.NotBlank;
 @Data
 @Builder
 public class ItemRequestDto {
-    long id;
+    private long id;
 
     @NotBlank
     private String description;

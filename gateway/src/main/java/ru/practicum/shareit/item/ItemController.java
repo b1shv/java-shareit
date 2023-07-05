@@ -53,7 +53,7 @@ public class ItemController {
                                              @Positive @RequestParam(defaultValue = "10") int size) {
         log.info("Search text, text={}, from={}, size={}", text, from, size);
         if (text.isBlank()) {
-            return ResponseEntity.of(Optional.of(Collections.emptyList()));
+            return ResponseEntity.ok(Collections.emptyList());
         }
         return itemClient.searchText(userId, text, from, size);
     }

@@ -4,7 +4,6 @@ import lombok.Builder;
 import lombok.Data;
 import ru.practicum.shareit.validation.StartBeforeEndValid;
 
-import javax.validation.constraints.Future;
 import javax.validation.constraints.FutureOrPresent;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -13,12 +12,11 @@ import java.time.LocalDateTime;
 @Builder
 @StartBeforeEndValid
 public class BookingDto {
+    @NotNull
+    private Long itemId;
+
     @FutureOrPresent
     private LocalDateTime start;
 
-    @Future
     private LocalDateTime end;
-
-    @NotNull
-    private Long itemId;
 }
