@@ -11,11 +11,8 @@ import java.util.List;
 @Data
 @Builder
 public class ItemRequestDto {
-    private long id;
+    long id;
 
     @NotBlank
     private String description;
-
-    private LocalDateTime created;
-    private List<ItemDto> items;
 }

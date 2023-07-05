@@ -62,9 +62,6 @@ public class BookingController {
     @PostMapping
     public ResponseEntity<Object> bookItem(@RequestHeader(USER_ID) long userId,
                                            @RequestBody @Valid BookingDto bookingDto) {
-        if (bookingDto.getEnd().isBefore(bookingDto.getStart()) || bookingDto.getEnd().isEqual(bookingDto.getStart())) {
-            throw new IllegalArgumentException("Incorrect end time");
-        }
         log.info("Creating booking {}, userId={}", bookingDto, userId);
         return bookingClient.bookItem(userId, bookingDto);
     }

@@ -100,7 +100,7 @@ class ItemServiceImplTest {
     }
 
     @Test
-    void searchText_shouldReturnItems_ifTextNotBlank() {
+    void searchText_shouldReturnItems() {
         Item item1 = Item.builder().id(1).name("Item 1").ownerId(1).build();
         Item item2 = Item.builder().id(2).name("Item 2").ownerId(1).build();
         String text = "text";
@@ -108,14 +108,6 @@ class ItemServiceImplTest {
         when(itemRepository.searchText(text, PageRequest.of(0, 10))).thenReturn(expected);
 
         assertThat(itemService.searchText(text, PageRequest.of(0, 10))).isEqualTo(expected);
-    }
-
-    @Test
-    void searchText_shouldReturnEmptyList_ifTextBlank() {
-        String text = "  ";
-
-        assertThat(itemService.searchText(text, PageRequest.of(0, 10))).isEmpty();
-        verify(itemRepository, never()).searchText(text, PageRequest.of(0, 10));
     }
 
     @Test
